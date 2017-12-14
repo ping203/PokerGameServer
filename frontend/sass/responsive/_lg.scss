@@ -1,0 +1,52 @@
+ @media (min-width: $screen-lg-min) {
+     // Wide Desktop
+     .container-big {
+         width: 1650px;
+         .community-cards {
+             width: 60%;
+         }
+     }
+     .mt100 {
+         margin-top: -100px;
+     }
+     .bg-all {
+         .dealer-name {
+             top: 92px;
+             left: 50%;
+             padding: 4px 30px 2px;
+             font-size: 30px;
+         }
+         .player-number {
+             &.dealer {
+                 top: -25px;
+                 .number {
+                     top: 45%;
+                 }
+             }
+             .main-dealer {
+                 width: 25px;
+                 height: 25px;
+                 font-size: 18px;
+                 line-height: 1.5;
+                 top: 28px;
+             }
+             .number {
+                 top: 50%;
+                 font-size: 45px;
+             }
+             .img-circle-player {
+                 width: 90px;
+                 height: 92px;
+             }
+          
+            
+            //  &.player-8,
+            //  &.player-1 {
+            //      top: 5%;
+            //  }
+         }
+         .pack-cards {
+             top: 150px;
+         }
+     }
+ }

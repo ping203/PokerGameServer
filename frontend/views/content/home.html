@@ -1,0 +1,126 @@
+<div class="bg-all">
+    <div class="container-fluid">
+        <div class="logo-left pull-left">
+            <img src="img/logo.png" alt="" class="img-full">
+        </div>
+        <div class="logo-right pull-right">
+            <img src="img/logo.png" alt="" class="img-full">
+        </div>
+        <div class="title text-center">
+            Texas Hold'em Poker
+        </div>
+    </div>
+    <audio controls ng-show="false" id="cardAudio">
+        <source src="img/card_distribute.mp3" type="audio/mpeg">
+    </audio>
+    <div class="container-big container">
+        <div class="position-relative mt100">
+            <div class="playing-table">
+                <div class="table-img text-center">
+                    <img src="img/table.png" alt="" class="img-full">
+                </div>
+            </div>
+            <!--pack of cards-->
+            <div class="pack-cards">
+                <card card='DONE' ng-style="style" width="45" height="55">
+            </div>
+            </card>
+            <!--end pack of cards-->
+            <!-- community-cards -->
+            <div class="community-cards">
+                <div class="row">
+                    <div class="col-md-1 col-sm-1"></div>
+                    <div class="col-md-2 col-sm-2">
+                        <div class="community-image">
+                            <community community-card="communityCards[1]"></community>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-sm-2">
+                        <div class="community-image">
+                            <community community-card="communityCards[2]"></community>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-sm-2">
+                        <div class="community-image">
+                            <community community-card="communityCards[3]"></community>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-sm-2">
+                        <div class="community-image">
+                            <community community-card="communityCards[5]"></community>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-sm-2">
+                        <div class="community-image">
+                            <community community-card="communityCards[7]"></community>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!--End community-cards -->
+            <!-- dealer -->
+            <div class="dealer">
+                <div class="dealer player-number">
+                    <img src="img/circle-icon-dealer.png" alt="" width="150">
+                    <div class="number">
+                        <img src="img/dealer-icon.png" alt="" width="75">
+                    </div>
+                </div>
+                <div class="dealer-name text-uppercase">
+                    Dealer
+                </div>
+            </div>
+            <!--end dealer -->
+            <!-- player -->
+            <div class="players">
+                <players player="players[0]"> </players>
+                <players player="players[1]"> </players>
+                <players player="players[2]"> </players>
+                <players player="players[3]"> </players>
+                <players player="players[4]"> </players>
+                <players player="players[5]"> </players>
+                <players player="players[6]"> </players>
+                <players player="players[7]"> </players>
+            </div>
+            <!-- end player -->
+        </div>
+    </div>
+    <div class="container-fluid">
+        <div class="table-score">
+            <div class="img-table-score position-relative">
+                <img src="img/score.png" alt="" class="img-full">
+                <div class="table-score-count">
+                    <div class="row m0">
+                        <div class="col-md-7 pad-0">
+                            <label for="" class="text-uppercase">
+                                Table buy-in:
+                            </label>
+                        </div>
+                        <div class="col-md-5 pad-0">
+                            <label for="" class="text-uppercase">
+                                {{settings[0].value|number}}
+                            </label>
+                        </div>
+                    </div>
+                    <div class="row m0">
+                        <div class="col-md-6 pad-0">
+                            <label for="" class="text-uppercase">
+                                SB: {{settings[1].value|number}}
+                            </label>
+                        </div>
+                        <div class="col-md-6 pad-0">
+                            <label for="" class="text-uppercase">
+                                BB: {{settings[2].value|number}}
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footer">
+            Powered by
+            <span class="wohlig"> Wohlig Transformations Pvt. Ltd.</span>
+        </div>
+    </div>
+
+</div>
