@@ -3,6 +3,9 @@ var controller = {
     getTushar: function () {
         // Every thing is awesome
     },
+    signUp: function (req, res) {
+       User.signUp(req.body, res.callback);
+    },
     loginFacebook: function (req, res) {
         passport.authenticate('facebook', {
             scope: ['public_profile', 'user_friends', 'email'],

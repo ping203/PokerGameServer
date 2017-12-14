@@ -13,6 +13,7 @@ var schema = new Schema({
         type: Date,
        
     },
+    oneSingleId: [String],
     // photo: {
     //     type: String,
     //     default: "",
@@ -89,8 +90,12 @@ module.exports = mongoose.model('User', schema);
 
 var exports = _.cloneDeep(require("sails-wohlig-service")(schema, "user", "user"));
 var model = {
-    signUp: function(){
-
+    signUp: function(userData, callback){
+        userData.accessToken = [uid(16)];
+        var user = new this(userData);
+        user.save(function(err, data){
+            callback(err, data);
+        });
     },
     existsSocial: function (user, callback) {
         var Model = this;
