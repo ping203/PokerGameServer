@@ -4,7 +4,17 @@ var controller = {
         // Every thing is awesome
     },
     signUp: function (req, res) {
+        console.log("inside signUp");
        User.signUp(req.body, res.callback);
+    },
+    login:function(req, res){
+        User.login(req.body, res.callback);
+    },
+    login:function(req, res){
+        User.login(req.body, res.callback);
+    },
+    verifyOtp: function(req, res){
+        User.verifyOtp(req.body, res.callback);
     },
     loginFacebook: function (req, res) {
         passport.authenticate('facebook', {

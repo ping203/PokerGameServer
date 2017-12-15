@@ -2,7 +2,7 @@ var schema = new Schema({
     name: {
         type: String,
         required: true,
-       
+
     },
     email: {
         type: String,
@@ -11,7 +11,11 @@ var schema = new Schema({
     },
     dob: {
         type: Date,
-       
+
+    },
+    balance: {
+        type : Number,
+        default: 0 
     },
     oneSingleId: [String],
     // photo: {
@@ -41,13 +45,14 @@ var schema = new Schema({
     },
     mobile: {
         type: String,
+        unique: true,
         default: ""
     },
-    city:{
+    city: {
         type: String,
         default: ""
     },
-    country:{
+    country: {
         type: String,
         default: ""
     },
@@ -90,11 +95,74 @@ module.exports = mongoose.model('User', schema);
 
 var exports = _.cloneDeep(require("sails-wohlig-service")(schema, "user", "user"));
 var model = {
-    signUp: function(userData, callback){
-        userData.accessToken = [uid(16)];
+    signUp: function (userData, callback) {
+        console.log(userData);
+        userData.password = md5(userData.password);
+        // userData.accessToken = [uid(16)];
         var user = new this(userData);
-        user.save(function(err, data){
-            callback(err, data);
+        user.save(function (err, data) {
+            if (err) {
+                callback(err);
+            } else {
+
+                callback(err, "Registered Successfully");
+            }
+        });
+    },
+    login: function (user, callback) {
+        var Model = this;
+        Model.findOne({
+            mobile: user.mobile,
+            password: md5(user.password)
+        }).exec(
+            function (err, data) {
+                if (err) {
+                    callback(err);
+                } else {
+                    if (!_.isEmpty(data)) {
+                        var otp = _.random(1000, 4999);
+                        console.log(otp);
+                        data.otp = otp;
+
+                        data.save(function (err, data) {
+                            if (err) {
+                                callback(err);
+                            } else {
+                                callback(err, {
+                                    _id: data._id
+                                });
+                            }
+                        });
+                    } else {
+                        callback("Invalid Credentials");
+                    }
+                }
+            }
+        );
+    },
+    verifyOtp: function (data, callback) {
+        var Model = this;
+        Model.findOne({
+            _id: data._id,
+            otp: data.otp
+        }).exec(function (err, data) {
+            if (err) {
+                callback(err);
+            } else {
+                if (!_.isEmpty(data)) {
+                      var accessToken = [uid(16)];
+                      data.accessToken = accessToken;
+                      data.save(function(err, data){
+                             if(err){
+                                callback(err);
+                             }else{
+                                 callback(err, {accessToken: accessToken});
+                             }
+                      });
+                } else {
+                    callback("Otp verfication failed");
+                }
+            }
         });
     },
     existsSocial: function (user, callback) {
@@ -150,7 +218,7 @@ var model = {
         });
     },
     profile: function (data, callback, getGoogle) {
-        var str = "name email photo mobile accessLevel";
+        var str = "name email mobile balance city country";
         if (getGoogle) {
             str += " googleAccessToken googleRefreshToken";
         }
