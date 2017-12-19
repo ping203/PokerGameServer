@@ -1,0 +1,45 @@
+<div>
+        <a class="btn btn-primary pull-right" ng-click="createBox('Create')">Add New</a>
+        <label>{{type.name}} <span ng-show="type.required">*</span></label>
+        <span style="float:right;width:200px;"><input type="search" class="form-control" placeholder="Search..." ng-model="search.text"> </span>
+    </div>
+    <!--<div class="error-msg" ng-show="formData[type.tableRef].length==0 && type.validation[0] != ''">At least one Product is compulsory.</div>-->
+    
+    <div class="sec">
+        <div>
+            <table class="table table-input" ng-if="model.length != 0">
+                <thead>
+                    <tr>
+                        <th ng-repeat="field in type.fields" ng-if="field.onView">{{field.name}}</th>
+                        <th width="150px">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- {{model}} -->
+                    <tr ng-repeat="data in model | filter:search.text ">
+                        <td ng-if="field2.onView" ng-repeat="field2 in type.fields track by $index">
+                                
+                            <img ng-if="field2.type == 'image'" ng-src="{{data[field2.tableRef] | serverimage}}">
+                            <div ng-if="field2.type != 'image' && !field2.dropDownField && field2.dropDownField != 'productName'">
+                                {{data[field2.tableRef]}}</div>
+                            <div ng-if="field2.type != 'image' && field2.dropDownField && field2.dropDownField == 'productName'">
+                                {{data.product.productName}}</div>
+                            <div ng-if="field2.type != 'image' && field2.type == 'tags' && field2.companyName=='companyName'">
+                                        {{data.companyObj.name}}</div>
+                                        <!-- <div ng-if="field2.type != 'image' && field2.type == 'text' && field2.companyCount=='companyCount'">
+                                                {{data.voteCount}}</div> -->
+
+                        </td>
+                        <td>
+                            <a class="btn btn-primary" ng-click="editBox('Edit',data)">
+                                <i class="fa fa-pencil"></i>
+                            </a>
+                            <a class="btn btn-danger" ng-click="deleteBox($index, model)">
+                                <i class="fa fa-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>

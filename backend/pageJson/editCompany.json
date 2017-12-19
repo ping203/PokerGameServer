@@ -1,0 +1,64 @@
+{
+    "title": "Edit Company",
+    "name": "Company",
+    "jsonPage": "viewCompany",
+    "desciption": "",
+    "pageType": "edit",
+    "urlFields": ["_id"],
+    "fields": [{
+        "name": "Name",
+        "type": "text",
+        "tableRef": "name",
+        "placeholder": "Enter Name",
+        "id": "name",
+        "validation": ["required", "trim", "unique"],
+        "url": ""
+    },{
+        "name": "Description",
+        "type": "text",
+        "tableRef": "description",
+        "placeholder": "Enter Description",
+        "id": "description",
+        "validation": ["", "trim"],
+        "url": ""
+    },{
+        "name": "Logo",
+        "type": "image",
+        "tableRef": "logo",
+        "size":"250 x 250",
+        "placeholder": "Upload Logo",
+        "id": "logo",
+        "view": true,
+        "disabled": true,
+        "validation": [],
+        "url": ""
+    }],
+    "action": [{
+        "name": "submit",
+        "action": "submitCompany",
+        "stateName": {
+            "page": "page",
+            "json": {
+                "id": "viewCompany"
+            }
+        }
+    }, {
+        "name": "cancel",
+        "sideMenuRedirect": true,
+        "stateName": {
+            "page": "page",
+            "json": {
+                "id": "viewCompany"
+            }
+        }
+    }],
+    "apiCall": {
+        "url": "Company/save",
+        "params": "_id"
+    },
+    "preApi": {
+        "url": "Company/getOne",
+        "params": "_id"
+    }
+
+}

@@ -72,7 +72,7 @@ global["monguurl"] = require('monguurl');
 require('mongoose-middleware').initialize(mongoose);
 global["Schema"] = mongoose.Schema;
 global["http"] = require('http');
-
+global["md5"] = require('md5')
 
 //Image Library
 global["stream"] = require('stream');

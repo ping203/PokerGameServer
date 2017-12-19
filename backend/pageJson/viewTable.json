@@ -1,0 +1,75 @@
+{
+    "title": "Table",
+    "description": "List of Tables",
+    "pageType": "view",
+    "sendIdWithCreate": true,
+    "urlFields": ["_id"],
+    "fields": [{
+        "name": "Name",
+        "isSort": "",
+        "tableRef": "name"
+    }, {
+        "name": "Minimum Buyin",
+        "isSort": "",
+        "tableRef": "minimumBuyin"
+    },{
+        "name": "Small Blind",
+        "isSort": "",
+        "tableRef": "smallBlind"
+    },{
+        "name": "Big Blind",
+        "isSort": "",
+        "tableRef": "bigBlind"
+    },{
+        "name": "Maximum No Of Player",
+        "isSort": "",
+        "tableRef": "maximumNoOfPlayers"
+    }],
+    "action": [{
+        "name": "edit",
+        "icon": "fa-pencil",
+        "buttonClass": "btn-primary",
+        "type": "page",
+        "action": "editTable",
+        "fieldsToSend": {
+            "_id": "_id"
+        }
+    }, {
+        "name": "delete",
+        "icon": "fa-trash",
+        "buttonClass": "btn-danger",
+        "type": "apiCallConfirm",
+        "title": "Delete Table",
+        "content": "Are you sure you want to delete Table?",
+        "api": "Table/delete",
+        "fieldsToSend": {
+            "name": "_id",
+            "value": "_id"
+        }
+    }],
+    "button": [{
+        "name": "Excel Export",
+        "icon": "print",
+        "class": "btn-danger",
+        "type": "redirect",
+        "action": "Table/generateExcel",
+        "linkType": "admin"
+    }, {
+        "name": "Upload Excel",
+        "icon": "delete",
+        "class": "btn-warning",
+        "type": "redirect",
+        "action": "excel-upload/Table",
+        "linkType": "internal"
+    }, {
+        "name": "Create",
+        "icon": "plus",
+        "class": "btn-success",
+        "type": "page",
+        "action": "createTable"
+    }],
+    "apiCall": {
+        "url": "Table/search",
+        "params": "_id"
+    }
+}

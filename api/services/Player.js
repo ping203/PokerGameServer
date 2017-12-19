@@ -11,7 +11,7 @@ var schema = new Schema({
     },
     isActive: {
         type: Boolean,
-        default: false
+        default: true
     },
     isFold: {
         type: Boolean,
@@ -30,14 +30,7 @@ var schema = new Schema({
         type: Boolean,
         default: false
     },
-    hasRaised: {
-        type: Boolean,
-        default: false
-    },
-    hasRaisedd: {
-        type: Boolean,
-        default: false
-    },
+
     isAllIn: {
         type: Boolean,
         default: false
@@ -47,6 +40,45 @@ var schema = new Schema({
         default: false
     },
     hasCalled: {
+        type: Boolean,
+        default: false
+    },
+    table: {
+        type: Schema.Types.ObjectId,
+        ref: 'Player'
+    },
+    user: {
+        type: Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    amountAdded: {
+        preFlop: {
+            type: Number,
+            default: 0
+        },
+        Flop: {
+            type: Number,
+            default: 0
+        },
+        Turn: {
+            type: Number,
+            default: 0
+        },
+        River: {
+            type: Number,
+            default: 0
+        }
+
+    },
+    isBigBlid: {
+        type: Boolean,
+        default: false
+    },
+    isSmallBlind: {
+        type: Boolean,
+        default: false
+    },
+    hasTurnCompleted: {
         type: Boolean,
         default: false
     }
@@ -535,11 +567,12 @@ var model = {
                 if (dataserve && dataserve.serve) {
 
                     if (data.card && data.card.length == 2) {
-
+                        var tableId = data.tableId;
                         async.parallel({
                             players: function (callback) {
                                 Player.find({
-                                    isActive: true
+                                    isActive: true,
+                                    table: tableId
                                 }).exec(callback);
                             },
                             communityCards: function (callback) {
@@ -555,6 +588,7 @@ var model = {
                             var dealerNo = -1;
                             var maxCommunityCard = 8;
                             var maxCardsPerPlayer = 2;
+
                             _.each(response.players, function (player, index) {
                                 playerCards = _.concat(playerCards, player.cards);
                                 if (player.isDealer) {
@@ -601,7 +635,44 @@ var model = {
                                     } else {
                                         callback(err, "Card Provided to Player " + response.players[toServe].playerNo);
                                         if (playerCards.length + 1 == (playerCount * maxCardsPerPlayer)) {
-                                            Player.makeTurn("LastPlayerCard", function (err, data) {
+                                            var table = {};
+                                            table._id = tableId;
+                                            table.status = 'serve';
+                                            async.parallel([
+                                                function (callback) {
+                                                    Player.makeTurn("LastPlayerCard", function (err, data) {
+                                                        callback(err, data);
+                                                    });
+                                                },
+                                                function (callback) {
+                                                    Table.changeStatus(table, callback)
+                                                }
+                                                // function (callback) {
+                                                //     Table.findOneAndUpdate({
+                                                //         _id: tableId
+                                                //     }, {
+                                                //         status: 'preFolp'
+                                                //     }).exec(function (err, data) {
+                                                //         callback(err, data);
+                                                //     });
+                                                // }
+                                            ], function (err, data) {
+                                                Player.blastSocket({
+                                                    player: true,
+                                                    value: response.players[toServe].playerNo
+                                                });
+                                            });
+                                            // Player.makeTurn("LastPlayerCard", function (err, data) {
+                                            //     Player.blastSocket({
+                                            //         player: true,
+                                            //         value: response.players[toServe].playerNo
+                                            //     });
+                                            // });
+                                        } else if (playerCards.length == 0) {
+                                            var table = {};
+                                            table._id = tableId;
+                                            table.status = 'serve';
+                                            Table.changeStatus(table, function (err, data) {
                                                 Player.blastSocket({
                                                     player: true,
                                                     value: response.players[toServe].playerNo

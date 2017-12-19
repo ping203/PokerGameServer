@@ -1,0 +1,88 @@
+{
+    "title": "Edit Table",
+    "name": "Table",
+    "jsonPage": "viewTable",
+    "desciption": "",
+    "pageType": "edit",
+    "urlFields": ["_id"],
+    "fields": [{
+        "name": "Minimum Buyin",
+        "type": "text",
+        "tableRef": "minimumBuyin",
+        "placeholder": "Enter Minimum Buyin",
+        "id": "minimumBuyin",
+        "validation": ["required"],
+        "url": ""
+    }, {
+        "name": "Small Blind",
+        "type": "text",
+        "tableRef": "smallBlind",
+        "placeholder": "Enter Small Blind",
+        "id": "smallBlind",
+        "validation": ["required"],
+        "url": ""
+    }, {
+        "name": "Big Blind",
+        "type": "text",
+        "tableRef": "bigBlind",
+        "placeholder": "Enter Big Blind",
+        "id": "bigBlind",
+        "validation": ["required"],
+        "url": ""
+    },{
+        "name": "Name",
+        "type": "text",
+        "tableRef": "name",
+        "placeholder": "Enter Name",
+        "id": "name",
+        "validation": ["required"],
+        "url": ""
+    },{
+        "name": "Maximum No Of Players",
+        "type": "text",
+        "tableRef": "maximumNoOfPlayers",
+        "placeholder": "Enter Maximum No Of Players",
+        "id": "maximumNoOfPlayers",
+        "validation": ["required"],
+        "url": ""
+    },{
+        "name": "Image",
+        "type": "image",
+        "tableRef": "image",
+        "size": "250 x 250",
+        "placeholder": "Upload Image",
+        "id": "image",
+        "view": true,
+        "disabled": false,
+        "validation": [],
+        "url": ""
+    }],
+    "action": [{
+        "name": "submit",
+        "action": "submitTable",
+        "stateName": {
+            "page": "page",
+            "json": {
+                "id": "viewTable"
+            }
+        }
+    }, {
+        "name": "cancel",
+        "sideMenuRedirect": true,
+        "stateName": {
+            "page": "page",
+            "json": {
+                "id": "viewTable"
+            }
+        }
+    }],
+    "apiCall": {
+        "url": "Table/save",
+        "params": "_id"
+    },
+    "preApi": {
+        "url": "Table/getOne",
+        "params": "_id"
+    }
+
+}

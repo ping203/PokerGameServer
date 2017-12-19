@@ -14,9 +14,14 @@ var schema = new Schema({
 
     },
     balance: {
-        type : Number,
-        default: 0 
+        type: Number,
+        default: 0
     },
+    tableAmt: {
+        type: Number,
+        default: 0
+    },
+
     oneSingleId: [String],
     // photo: {
     //     type: String,
@@ -65,6 +70,10 @@ var schema = new Schema({
         type: [String],
         index: true
     },
+    type:{
+        type: String,
+        enum: ['Normal','Other']
+    }
     // googleAccessToken: String,
     // googleRefreshToken: String,
     // oauthLogin: {
@@ -97,11 +106,14 @@ var exports = _.cloneDeep(require("sails-wohlig-service")(schema, "user", "user"
 var model = {
     signUp: function (userData, callback) {
         console.log(userData);
+        //userData.dob = new Date(userData.dob);
         userData.password = md5(userData.password);
         // userData.accessToken = [uid(16)];
         var user = new this(userData);
         user.save(function (err, data) {
+            console.log(data);
             if (err) {
+                console.log(err);
                 callback(err);
             } else {
 
@@ -111,6 +123,7 @@ var model = {
     },
     login: function (user, callback) {
         var Model = this;
+        console.log(user);
         Model.findOne({
             mobile: user.mobile,
             password: md5(user.password)
@@ -120,7 +133,8 @@ var model = {
                     callback(err);
                 } else {
                     if (!_.isEmpty(data)) {
-                        var otp = _.random(1000, 4999);
+                        var otp = 2222;
+                        //var otp = _.random(1000, 9999);
                         console.log(otp);
                         data.otp = otp;
 
@@ -140,7 +154,54 @@ var model = {
             }
         );
     },
+    varifyMobile: function (data, callback) {
+        var Model = this;
+        Model.findOne({
+            mobile: data.mobile
+        }).exec(function (err, data) {
+            if (err) {
+                callback(err);
+            } else {
+                if (!_.isEmpty(data)) {
+                    var otp = 2222;
+                    //var otp = _.random(1000, 9999);
+                    console.log(otp);
+                    data.otp = otp;
+
+                    data.save(function (err, data) {
+                        if (err) {
+                            callback(err);
+                        } else {
+                            callback(err, {
+                                _id: data._id
+                            });
+                        }
+                    });
+
+                } else {
+                    callback("Not found");
+                }
+            }
+        });
+    },
+    setPassword: function (data, callback) {
+        var Model = this;
+        console.log(data);
+        Model.findOneAndUpdate({
+            _id: data._id
+        }, {
+            password: md5(data.password),
+        }).exec(function (err, data) {
+            if (err) {
+                callback(err);
+            } else {
+                callback(err, "Password updated successfully")
+            }
+        });
+
+    },
     verifyOtp: function (data, callback) {
+        console.log(data);
         var Model = this;
         Model.findOne({
             _id: data._id,
@@ -150,15 +211,18 @@ var model = {
                 callback(err);
             } else {
                 if (!_.isEmpty(data)) {
-                      var accessToken = [uid(16)];
-                      data.accessToken = accessToken;
-                      data.save(function(err, data){
-                             if(err){
-                                callback(err);
-                             }else{
-                                 callback(err, {accessToken: accessToken});
-                             }
-                      });
+                    console.log(data);
+                    var accessToken = [uid(16)];
+                    data.accessToken = accessToken;
+                    data.save(function (err, data) {
+                        if (err) {
+                            callback(err);
+                        } else {
+                            callback(err, {
+                                accessToken: accessToken
+                            });
+                        }
+                    });
                 } else {
                     callback("Otp verfication failed");
                 }

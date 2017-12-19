@@ -19,7 +19,13 @@ var schema = new Schema({
     serve: {
         type: Boolean,
         default: false
+    },
+    table: {
+
+        type: Schema.Types.ObjectId,
+        ref: 'Table'
     }
+
 });
 
 schema.plugin(deepPopulate, {});

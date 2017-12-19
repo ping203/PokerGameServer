@@ -8,10 +8,12 @@ var controller = {
        User.signUp(req.body, res.callback);
     },
     login:function(req, res){
+        console.log("Inside Login");
         User.login(req.body, res.callback);
     },
-    login:function(req, res){
-        User.login(req.body, res.callback);
+    varifyMobile: function(req, res){
+        console.log("inside varifyMobile");
+        User.varifyMobile(req.body, res.callback);
     },
     verifyOtp: function(req, res){
         User.verifyOtp(req.body, res.callback);
@@ -22,7 +24,13 @@ var controller = {
             failureRedirect: '/'
         }, res.socialLogin)(req, res);
     },
-
+    setPassword:function(req, res){
+        User.setPassword(req.body, res.callback);
+    },
+   sendSocket: function(req, res){
+    sails.sockets.blast("Update", "data sent");
+    res.callback();
+   },
     loginGoogle: function (req, res) {
         if (req.query.returnUrl) {
             req.session.returnUrl = req.query.returnUrl;
