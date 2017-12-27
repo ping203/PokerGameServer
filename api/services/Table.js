@@ -49,7 +49,8 @@ var schema = new Schema({
     },
     activePlayer: [{
         type: Schema.Types.ObjectId,
-        ref: 'Player'
+        ref: 'Player',
+        default: []
     }]
 });
 
@@ -60,11 +61,46 @@ module.exports = mongoose.model('Table', schema);
 
 var exports = _.cloneDeep(require("sails-wohlig-service")(schema));
 var model = {
+    getAllTable: function (data, callback) {
+        this.find({}).exec(function (err, data) {
+            callback(err, data);
+        });
+    },
     addUserToTable: function (data, callback) {
-        User.findOne({
-            accessToken: data.accessToken
-        }).exec(function (err, user) {
-            if (!_.isEmpty(user)) {
+        console.log(data);
+        async.parallel({
+            user: function (callback) {
+                User.findOne({
+                    accessToken: data.accessToken
+                }).exec(callback);
+            },
+            table: function (callback) {
+                Table.findOne({
+                    _id: data.tableId
+                }).exec(callback);
+            }
+        }, function (err, result) {
+
+            if (!_.isEmpty(result.user)) {
+                var user = result.user;
+                var table = result.table;
+
+                //check for max players
+                if (table.activePlayer && table.activePlayer.length == table.maximumNoOfPlayers) {
+                    callback("Room Not Available");
+                    return 0;
+                }
+
+               var playerIndex = _.findIndex(table.activePlayer, function (p) {
+                    return p + "" == user._id;
+                });
+
+                //already exists
+                if(playerIndex >= 0){
+                    callback("Player Already Added");
+                    return 0;
+                }
+
                 Player.find({
                     table: data.tableId
                 }).sort({
@@ -75,32 +111,157 @@ var model = {
                     if (playersData && playersData[0]) {
                         player.playerNo = parseInt(playersData[0].playerNo) + 1;
                     }
-                    console.log(player.playerNo);
+                    // console.log(player.playerNo);
                     if (!player.playerNo) {
-                        console.log("Inside");
+                        //  console.log("Inside");
                         player.playerNo = 1;
                     }
+
                     player.user = user._id;
                     player.table = data.tableId;
                     Player.saveData(player, function (err, player) {
                         if (err) {
                             callback(err);
                         } else {
-                            callback(err, "User added to table.");
+                            if (player && player.playerNo == 1) {
+                                //configuring things for rooms befor starting a game. 
+                                console.log("inside");
+                                // sails.sockets.join('Update', data.tableId);
+                                // sails.sockets.join('ShowWinner', data.tableId);
+                                async.each([1, 2, 3, 4, 5], function (cardNo, callback) {
+                                    var comData = {};
+                                    comData.cardNo = cardNo;
+                                    comData.table = data.tableId;
+                                    CommunityCards.saveData(comData, function () {
+                                        callback();
+                                    });
+
+                                }, function (err, data) {
+                                    if (table.activePlayer) {
+                                        table.activePlayer.push(user._id);
+                                    } else {
+                                        table.activePlayer = [user._id];
+                                    }
+                                    table.save(function (err, data) {
+                                        callback(err, player);
+                                    });
+
+                                });
+
+                            } else {
+                                callback(err, player);
+                            }
                         }
                     });
                 });
             } else {
-                callback("Login First");
+                callback("Please Login first");
             }
+        });
+        // User.findOne({
+        //     accessToken: data.accessToken
+        // }).exec(function (err, user) {
+        //     if (!_.isEmpty(user)) {
+        //         Player.find({
+        //             table: data.tableId
+        //         }).sort({
+        //             playerNo: -1
+        //         }).limit(1).exec(function (err, playersData) {
+        //             var player = {};
+        //             console.log(playersData);
+        //             if (playersData && playersData[0]) {
+        //                 player.playerNo = parseInt(playersData[0].playerNo) + 1;
+        //             }
+        //             // console.log(player.playerNo);
+        //             if (!player.playerNo) {
+        //                 //  console.log("Inside");
+        //                 player.playerNo = 1;
+        //             }
+        //             player.user = user._id;
+        //             player.table = data.tableId;
+        //             Player.saveData(player, function (err, player) {
+        //                 if (err) {
+        //                     callback(err);
+        //                 } else {
+        //                     if (player && player.playerNo == 1) {
+        //                         //configuring things for rooms befor starting a game. 
+        //                         console.log("inside");
+        //                         // sails.sockets.join('Update', data.tableId);
+        //                         // sails.sockets.join('ShowWinner', data.tableId);
+        //                         async.each([1, 2, 3, 4, 5], function (cardNo, callback) {
+        //                             var comData = {};
+        //                             comData.cardNo = cardNo;
+        //                             comData.table = data.tableId;
+        //                             CommunityCards.saveData(comData, function () {
+        //                                 callback();
+        //                             });
 
+        //                         }, function (err, data) {
+        //                             callback(err, player);
+        //                         });
+
+        //                     } else {
+        //                         callback(err, player);
+        //                     }
+        //                 }
+        //             });
+        //         });
+        //     } else {
+        //         callback("Login First");
+        //     }
+
+
+        // });
+    },
+    changeStatus: function (table, callback) {
+        // table = new this(table);
+        // console.log("inside changeStatus");
+        // table.save(function (err, data) {
+        //     callback(err, data);
+        // });
+
+
+        Table.findOneAndUpdate({
+            _id: table._id
+        }, {
+            status: table.status
+        }).exec(function (err, data) {
+            switch (table.status) {
+                case 'preFlop':
+
+                    break;
+
+                default:
+                    callback(err, data);
+            }
 
         });
     },
-    upadteStatus: function(table, callback){
-        Table.save(table, function(err, data){
-                callback(err,data);
+    updateStatus: function (tableId, callback) {
+        var status = [
+            'beforeStart',
+            'serve',
+            'preFlop',
+            'Flop',
+            'Turn',
+            'River',
+            'winner'
+        ]
+        Table.findOne({
+            _id: tableId
+        }).exec(function (err, data) {
+            var index = _.findIndex(status, function (s) {
+                return s == data.status
+            });
+
+            if (index >= 0) {
+                data.status = status[index + 1];
+            }
+
+            data.save(callback);
+
         });
     }
+
 };
 module.exports = _.assign(module.exports, exports, model);

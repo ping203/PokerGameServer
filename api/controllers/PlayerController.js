@@ -18,21 +18,21 @@ var controller = {
     },
     newGame: function (req, res) {
         Player.newGame(req.body, res.callback);
-        var license = getmid({
-            original: true,
-        });
-        red(license);
-        Config.findOne({
-            "name": "Licenses",
-            value: license
-        }).exec(function (err, data) {
-            if (err || _.isEmpty(data)) {
-                red("License Invalid");
-                sails.lower();
-            } else {
-                // green("License Verified");
-            }
-        });
+        // var license = getmid({
+        //     original: true,
+        // });
+        // red(license);
+        // Config.findOne({
+        //     "name": "Licenses",
+        //     value: license
+        // }).exec(function (err, data) {
+        //     if (err || _.isEmpty(data)) {
+        //         red("License Invalid");
+        //         sails.lower();
+        //     } else {
+        //         // green("License Verified");
+        //     }
+        // });
 
     },
     makeDealer: function (req, res) {
@@ -82,7 +82,7 @@ var controller = {
     //     Player.changeTurn(res.callback);
     // },
     call: function (req, res) {
-        Player.call(res.callback);
+        Player.call(req.body, res.callback);
     },
     check: function (req, res) {
         Player.check(res.callback);

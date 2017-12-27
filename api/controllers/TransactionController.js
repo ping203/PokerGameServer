@@ -7,6 +7,9 @@ var controller = {
     withdrawCoins: function(req, res){
         console.log("inside withdrawCoins");
         Transaction.withdrawCoins(req.body, res.callback);
+    },
+    getDetails: function(req, res){
+        Transaction.getDetails(req.body, res.callback);
     }
 };
 module.exports = _.assign(module.exports, controller);

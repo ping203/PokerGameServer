@@ -138,24 +138,30 @@ var model = {
             }
         });
     },
-    closeServe: function (callback) {
+    closeServe: function (tableId, callback) {
         var Model = this;
-        Model.findOne().sort({
+        Model.findOne({
+            table: tableId
+        }).sort({
             cardNo: 1
         }).exec(function (err, data) {
             data.serve = false;
             data.save(callback);
         });
     },
-    checkServe: function (callback) {
+    checkServe: function (tableId, callback) {
         var Model = this;
-        Model.findOne().sort({
+        Model.findOne({
+            table: tableId
+        }).sort({
             cardNo: 1
         }).exec(callback);
     },
-    startServe: function (callback) {
+    startServe: function (tableId, callback) {
         var Model = this;
-        Model.findOne().sort({
+        Model.findOne({
+            table: tableId
+        }).sort({
             cardNo: 1
         }).exec(function (err, data) {
             data.serve = true;

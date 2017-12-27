@@ -11,7 +11,11 @@ var schema = new Schema({
     status: String,
     transactionId: String,
     transactionLog: Schema.Types.Mixed,
-    Voucher: String
+    Voucher: String,
+    balance: {
+        type: Number,
+        default: 0
+    }
 });
 
 schema.plugin(deepPopulate, {});
@@ -23,6 +27,13 @@ var exports = _.cloneDeep(require("sails-wohlig-service")(schema));
 var model = {
     getDetails: function (data, callback) {
         var Model = this;
+        var pagination = 20;
+        var page = 0;
+        if (data.page) {
+            page = data.page
+        }
+       console.log(data);
+        var skipRecords = page * pagination;
         User.findOne({
             accessToken: data.accessToken
         }).exec(function (err, data) {
@@ -30,57 +41,75 @@ var model = {
                 callback(err);
             } else {
                 if (!_.isEmpty(data)) {
-                    Model.findOne({
-                        _id: data._id
-                    }, {
-                        _id: 0,
-                        orderType: 1,
-                        amount: 1,
-                        status: 1
-                    }).exec(function (err, data) {
-                        if (err) {
-                            callback(err);
-                        } else {
-                            callback(err, data);
-                        }
-                    });
+                    
+                    var options = {
+                       
+                        
+                        start: page  * pagination,
+                        count: pagination
+                    };
+
+                     Model.find({
+                         userId: data._id
+                     }).sort({_id:-1}).page(options, callback);
+                    // Model.find({
+                    //             userId: data._id
+                    //         }
+                    //         // {
+                    //         //     _id: 0,
+                    //         //     transType: 1,
+                    //         //     amount: 1,
+                    //         //     status: 1,
+                    //         // }
+                    //     ).sort({
+                    //         _id: -1
+                    //     })
+                    //     // .skip(skipRecords)
+                    //     // .limit(pagination)
+                    //     .exec(function (err, data) {
+                    //         if (err) {
+                    //             callback(err);
+                    //         } else {
+
+                    //             callback(err, data);
+                    //         }
+                    //     });
+                }else{
+                    callback("Please login first.");
                 }
             }
         });
     },
     buyCoins: function (coinData, callback) {
+        //console.log();
         var transData = {};
         //transData.transStatus = "Completed";
         transData.transType = 'diposit';
-        console.log(coinData);
-        transData.amount = coinData.coins;
-        var transAmt = coinData.coins;
+        console.log("coinData", coinData);
+        //  transData.amount = coinData.coins;
+        var transAmt = parseInt(coinData.coins);
         // var transAmt;
         var accessToken = coinData.accessToken;
-        if (parseInt(transAmt) == NaN) {
+        if (transAmt == NaN) {
             callback("Enter Valid Amount");
         }
         User.findOne({
             accessToken: accessToken
-        }).exec((err, data) =>  {
-            console.log(data);
+        }).exec((err, data) => {
+
             if (!_.isEmpty(data)) {
+
+                var finalAmount = parseInt(data.balance) + parseInt(transAmt);
+                //save the transaction
+                transData.userId = data._id
+                transData.amount = transAmt;
+                transData.balance = finalAmount;
+                //change the balance
+                data.balance = finalAmount;
                 async.parallel([(callback) => {
-                    console.log(data);
-                    transData.userId = data._id
-                    transData = new this(transData);
-                    transData.save(function(err, data){
-                         callback(err, data);
-                    });
-                    // Transaction.saveData(transData, function (err, data) {
-                    //     callback(err, data);
-                    // });
+                    Transaction.saveData(transData, callback);
                 }, function (callback) {
-                    var finalAmount = parseInt(data.balance) + parseInt(transAmt);
-                    data.balance = finalAmount;
-                    data.save(function (err, data) {
-                        callback(err, data);
-                    });
+                    data.save(callback);
                 }], function (err, result) {
                     if (err) {
                         console.log(err);
@@ -96,13 +125,10 @@ var model = {
     },
     withdrawCoins: function (coinData, callback) {
         var transData = {};
-        //transData.transStatus = "Completed";
         transData.transType = 'withdraw';
-        transData.amount = coinData.coins;
-        var transAmt = coinData.coins;
-        // var transAmt;
+        var transAmt = parseInt(coinData.coins);
         var accessToken = coinData.accessToken;
-        if (parseInt(transAmt) == NaN) {
+        if (transAmt == NaN) {
             callback("Enter Valid Amount");
         }
         User.findOne({
@@ -110,17 +136,18 @@ var model = {
         }).exec(function (err, data) {
 
             if (!_.isEmpty(data)) {
+
+                var finalAmount = parseInt(data.balance) - parseInt(transAmt);
+                //save transaction                
+                transData.userId = data._id
+                transData.amount = transAmt;
+                transData.balance = finalAmount;
+                //change balance of user
+                data.balance = finalAmount;
                 async.parallel([function (callback) {
-                    transData.userId = data._id;
-                    Transaction.saveData(transData, function (err, data) {
-                        callback(err, data);
-                    });
+                    Transaction.saveData(transData, callback);
                 }, function (callback) {
-                    var finalAmount = parseInt(data.balance) - parseInt(transAmt);
-                    data.balance = finalAmount;
-                    data.save(function (err, data) {
-                        callback(err, data);
-                    });
+                    data.save(callback);
                 }], function (err, result) {
                     if (err) {
                         console.log(err);
@@ -168,7 +195,7 @@ var model = {
                             });
                         }
                     },
-                   balance: function (callback) {
+                    balance: function (callback) {
                         var finalAmount = parseInt(data.amount) + parseInt(transAmt);
                         data.balance = finalAmount;
                         data.save(function (err, data) {
@@ -179,7 +206,9 @@ var model = {
                     if (err) {
                         callback(err);
                     } else {
-                        callback(err, {tansId:result.transaction._id})
+                        callback(err, {
+                            tansId: result.transaction._id
+                        })
                     }
                 });
             } else {
