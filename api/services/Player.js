@@ -363,7 +363,10 @@ var model = {
                         isAllIn: false,
                         hasRaisedd: false,
                         hasChecked: false,
-                        hasCalled: false
+                        hasCalled: false,
+                        isSmallBlind: false,
+                        isBigBlind: false,
+                        totalAmount: 0
                     }
                 }, {
                     multi: true
@@ -383,6 +386,9 @@ var model = {
                 }, function (err, cumCards) {
                     fwCallback(err, cumCards);
                 });
+            },
+            function(arg1, callback){
+                Pot.remove({}, callback)
             }
         ], function (err, cumCards) {
             Player.blastSocket({
@@ -765,6 +771,7 @@ var model = {
         });
     },
     allIn: function (data, callback) {
+        var tableId = data.tableId;
         async.waterfall([
             function (callback) { // Remove All raise
                 Player.update({}, {
@@ -778,7 +785,7 @@ var model = {
                 }, {
                     multi: true
                 }, function (err, cards) {
-                    callback(err);
+                    callback(err, tableId);
                 });
             },
             Player.currentTurn,
@@ -786,15 +793,19 @@ var model = {
                 player.isAllIn = true;
                 player.hasRaised = true;
                 player.save(function (err, data) {
-                    callback(err);
+                    console.log("playerData", data);
+                    callback(err, data);
                 });
             },
             function (player, callback) {
-                Pot.solvePot(player, 'call', function (err, data) {
+                // console.log("callback", callback);
+                Pot.solvePot(player, 'allIn', function (err, data) {
                     callback(err);
                 });
             },
-            Player.changeTurn
+            function (callback) {
+                Player.changeTurn(tableId, callback);
+            }
         ], callback);
     },
     currentTurn: function (tableId, callback) {
@@ -905,7 +916,8 @@ var model = {
                                     Player.findDealerNext,
                                     Player.makeSmallBlind,
                                     Player.nextInPlay,
-                                    Player.makeBigBlind
+                                    Player.makeBigBlind,
+                                    
                                 ], callback);
                             } else {
                                 async.waterfall(
@@ -1020,7 +1032,7 @@ var model = {
                     table: tableId
                 }).deepPopulate("user").exec(callback);
             },
-           
+
             table: function (callback) {
                 Table.findOne({
                     _id: tableId

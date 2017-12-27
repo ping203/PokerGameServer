@@ -113,7 +113,7 @@ var model = {
         } else {
             var allInAmount = currentPlayer.user.balance;
         }
-        
+
         console.log("allInAmount", allInAmount);
         //return data
         finalData.tableStatus = status;
@@ -121,6 +121,7 @@ var model = {
         finalData.callAmount = callAmount;
         finalData.allInAmount = allInAmount;
         finalData.potsInfo = potsInfo;
+
         callback(null, finalData);
     },
     //amountTobeAdded
@@ -143,7 +144,8 @@ var model = {
 
             // payAmt = item.potMaxLimit - deductAmt; //substract already paid amount
             if (payAmt > amountTobeAdded) {
-                Pot.splitPot(item, data.tableInfo, data.currentPlayer, amountTobeAdded, callback);
+                console.log("splitPot");
+                Pot.splitPot(item, data.tableStatus, data.currentPlayer, amountTobeAdded, callback);
             } else {
                 if (key == (pots.length - 1)) {
                     payAmt = amountTobeAdded; //add all the remaining money
@@ -151,7 +153,7 @@ var model = {
 
                 amountTobeAdded = amountTobeAdded - payAmt;
 
-                
+
 
                 var sendData = {};
                 sendData.amount = payAmt;
@@ -162,30 +164,36 @@ var model = {
             }
         }, callback);
     },
-    splitPot: function (pot, table, currentPlayer, amount, callback) {
+    splitPot: function (pot, tableStatus, currentPlayer, amount, callback) {
         var potData = {};
         potData.type = "side";
         potData.table = pot.table;
+        console.log("inside splitPot");
         Pot.createPot(potData, function (err, newPot) {
-            if (data) {
-              var playerIndex  = _.findIndex(pot.players, function (p) {
-                    return (p.playerNo == currentPlayer.playerNo && p.round == table.status)
+            if (newPot) {
+                var playerIndex = _.findIndex(pot.players, function (p) {
+                    return (p.playerNo == currentPlayer.playerNo && p.round == tableStatus)
                 });
 
-                if(playerIndex < 0){
+                if (playerIndex < 0) {
                     pot.players.push({
-                        playerNo : currentPlayer.playerNo,
-                        amount : 0,
-                        round : table.status
+                        playerNo: currentPlayer.playerNo,
+                        amount: amount,
+                        round: tableStatus
                     });
                 }
 
                 async.eachOfSeries(pot.players, function (item, key, callback) {
-                    if (item.round != table.status) {
-                        callback();
+                    console.log(item);
+                    if (item.round != tableStatus) {
+                        console.log("inside condition");
+                        callback(null);
                     } else {
                         if (item.amount > amount) {
                             var finalAmount = item.amount - amount;
+                            console.log("item.amount", item.amount);
+                            console.log("amount", amount);
+                            console.log("finalAmount", finalAmount);
                             async.parallel([
                                 function (callback) {
                                     //remove Extra amount
@@ -193,8 +201,8 @@ var model = {
                                     sendData.playerNo = item.playerNo;
                                     sendData.amount = finalAmount;
                                     sendData.round = item.round;
-                                    pot.potId = pot._id;
-                                    pot.makeEntryRemoveAmount(sendData, currentPlayer, callback);
+                                    sendData.potId = pot._id;
+                                    Pot.makeEntryRemoveAmount(sendData, currentPlayer, callback);
                                 },
                                 function (callback) {
                                     // add remained amount to new pot
@@ -202,21 +210,23 @@ var model = {
                                     sendData.playerNo = item.playerNo;
                                     sendData.amount = finalAmount;
                                     sendData.round = item.round;
-                                    pot.potId = newPot._id;
-                                    pot.makeEntryAddAmount(sendData, currentPlayer, callback);
+                                    sendData.potId = newPot._id;
+                                    Pot.makeEntryAddAmount(sendData, currentPlayer, callback);
                                 }
-                            ], callback)
+                            ], callback);
 
+                        }else{
+                            callback(null);
                         }
                     }
-                });
+                },callback);
             }
         });
     },
     solvePot: function (data, action, callback) {
         var tableId = data.table;
         var playerNo = data.playerNo;
-      //  var action = data.action;
+        //  var action = data.action;
         async.waterfall([
             function (callback) {
                 Player.getAllInfo(tableId, callback);
@@ -225,15 +235,15 @@ var model = {
         ], function (err, data) {
             switch (action) {
                 case 'call':
-                data.amountTobeAdded =   data.callAmount;   
-                break;
+                    data.amountTobeAdded = data.callAmount;
+                    break;
                 case 'allIn':
-                data.amountTobeAdded  =  data.allInAmount;
-                break;
+                    data.amountTobeAdded = data.allInAmount;
+                    break;
                 default:
-                break;
+                    break;
             }
-            Pot.addAmtToPot(data, callback);             
+            Pot.addAmtToPot(data, callback);
 
         });
         //  Player.getAllInfo(data.table,function(err, allData){
@@ -243,6 +253,8 @@ var model = {
     //params: playerNo, amount, round, PotId
     makeEntryAddAmount: function (data, currentPlayer, callback) {
         console.log(data);
+        console.log("makeEntryAddAmount");
+        playerIndex = -1;
         Pot.findOne({
             _id: data.potId
         }).exec(function (err, Pot) {
@@ -250,9 +262,11 @@ var model = {
                 callback(err);
                 return 0;
             }
-            var playerIndex = _.findIndex(Pot.players, function (p) {
-                return (p.playerNo == data.playerNo);
-            });
+            if (Pot.players) {
+                var playerIndex = _.findIndex(Pot.players, function (p) {
+                    return (p.playerNo == data.playerNo);
+                });
+            }
             if (playerIndex >= 0) {
                 Pot.players[playerIndex].amount = parseInt(Pot.players[playerIndex].amount) + parseInt(data.amount);
                 Pot.players[playerIndex].round = data.round;
@@ -275,6 +289,8 @@ var model = {
         });
     },
     makeEntryRemoveAmount: function (data, currentPlayer, callback) {
+        console.log("makeEntryRemoveAmount");
+        playerIndex = -1;
         Pot.findOne({
             _id: data.potId
         }).exec(function (err, Pot) {
@@ -282,9 +298,11 @@ var model = {
                 callback(err);
                 return 0;
             }
-            var playerIndex = _.findIndex(Pot.players, function (p) {
-                return (p.playerNo == data.playerNo);
-            });
+            if (Pot.players) {
+                var playerIndex = _.findIndex(Pot.players, function (p) {
+                    return (p.playerNo == data.playerNo);
+                });
+            }
             if (playerIndex >= 0) {
                 Pot.players[playerIndex].amount = parseInt(Pot.players[playerIndex].amount) - parseInt(data.amount);
                 Pot.players[playerIndex].round = data.round;
@@ -303,7 +321,7 @@ var model = {
             }, function (callback) {
                 currentPlayer.totalAmount -= parseInt(data.amount);
                 currentPlayer.save(callback);
-            }], callback)
+            }], callback);
         });
     }
 };
