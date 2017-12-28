@@ -54,6 +54,20 @@ var model = {
             Pot.makeEntryAddAmount(data, currentPlayer, callback);
         }], callback);
     },
+    getAmountForPlayer: function (potsInfo, playerNo, round) {
+        var paidAmt = 0;
+        _.each(potsInfo, function (pot) {
+            var playerAmt = _.find(pot.players, function (p) {
+                return (playerNo == p.playerNo && p.round == round);
+            });
+
+            if (playerAmt) {
+                paidAmt += playerAmt.amount;
+            }
+        });
+
+        return paidAmt;
+    },
     solveInfo: function (allData, callback) {
         var finalData = {};
         var tableInfo = allData.table;
@@ -72,16 +86,31 @@ var model = {
         //get call amount
         var callAmount = 0;
         var paidAmt = 0;
+        var currentPlayerBalance = 0;
         // var betMoney = _.(potsInfo.players[]);
         _.each(potsInfo, function (pot) {
             var potMaxLimit = 0;
             var paidAmtPerPot = 0;
+
+            //get maximum amount for particular round
             potMaxLimit = _.max(_.map(pot.players, function (p) {
                 if (p.round == status) {
                     return p.amount;
                 }
             }));
-            console.log("potMaxLimit", potMaxLimit);
+
+            console.log("potMaxLimit1", potMaxLimit);
+            // for new round take maximum amount from previous round
+            if (!potMaxLimit) {
+                var prvstatus = Table.getPrvStatus(status);
+                potMaxLimit = _.max(_.map(pot.players, function (p) {
+                    if (p.round == prvstatus) {
+                        return p.amount;
+                    }
+                }));
+            }
+
+            console.log("potMaxLimit2", potMaxLimit);
             //finding current player to abstract amount already paid
             var playerAmt = _.find(pot.players, function (p) {
                 return (currentPlayer.playerNo == p.playerNo && p.round == status);
@@ -91,6 +120,7 @@ var model = {
                 paidAmt += playerAmt.amount;
                 paidAmtPerPot = playerAmt.amount;
             }
+
             console.log("paidAmtPerPot", paidAmtPerPot);
             pot.payableAmt = potMaxLimit - paidAmtPerPot; // deduct already paid amount
             console.log("payableAmt", pot.payableAmt);
@@ -99,19 +129,47 @@ var model = {
 
         });
 
-        callAmount = callAmount - paidAmt;
+        callAmount = callAmount - paidAmt; // deduct already paid amount
+
+        //getPrvStatus
 
         console.log("callAmount", callAmount);
         //get AllIn amount 
-        var playerBalances = _.map(PlayersInfo, 'user.balance');
+
+        //remaining balance of players with  added amount in that round
+        var playerBalances = _.map(PlayersInfo, function (p) {
+            var paidPerRound = 0;
+
+            paidPerRound = getAmountForPlayer(potsInfo, p.playerNo, status);
+
+            if(p.palyerNo == currentPlayer.playerNo){
+                currentPlayerBalance = p.user.balance - p.totalAmount + paidPerRound;
+            }
+
+            //getAmountForPlayer
+
+            // if (playerRound) {
+            //     paidPerRound = playerRound.amount
+            // }
+
+            return p.user.balance - p.totalAmount + paidPerRound;
+        });
+        //var secondHighPlAmt =  playerBalances[1]
         playerBalances.sort(function (a, b) {
             return b - a
         });
+
+        //getAmountForPlayer
+        //remaining balance
+        //var currentPlayerBalance = currentPlayer.user.balance - currentPlayer.totalAmount + ;   
+        //var currentPlayerBalance = currentPlayer.user.balance - currentPlayer.totalAmount + ;   
+        //var currentPlayerBalance = currentPlayer.user.balance - currentPlayer.totalAmount + ;
+        console.log("currentPlayerBalance", currentPlayerBalance);
         console.log("playerBalances", playerBalances);
-        if (playerBalances[1] < currentPlayer.user.balance) {
+        if (playerBalances[1] < currentPlayerBalance) {
             var allInAmount = playerBalances[1];
         } else {
-            var allInAmount = currentPlayer.user.balance;
+            var allInAmount = currentPlayerBalance;
         }
 
         console.log("allInAmount", allInAmount);
@@ -147,13 +205,12 @@ var model = {
                 console.log("splitPot");
                 Pot.splitPot(item, data.tableStatus, data.currentPlayer, amountTobeAdded, callback);
             } else {
+
                 if (key == (pots.length - 1)) {
                     payAmt = amountTobeAdded; //add all the remaining money
                 }
 
                 amountTobeAdded = amountTobeAdded - payAmt;
-
-
 
                 var sendData = {};
                 sendData.amount = payAmt;
@@ -205,7 +262,7 @@ var model = {
                                     Pot.makeEntryRemoveAmount(sendData, currentPlayer, callback);
                                 },
                                 function (callback) {
-                                    // add remained amount to new pot
+                                    // add remaining amount to new pot
                                     var sendData = {};
                                     sendData.playerNo = item.playerNo;
                                     sendData.amount = finalAmount;
@@ -215,11 +272,11 @@ var model = {
                                 }
                             ], callback);
 
-                        }else{
+                        } else {
                             callback(null);
                         }
                     }
-                },callback);
+                }, callback);
             }
         });
     },

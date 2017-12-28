@@ -91,69 +91,73 @@ var model = {
                     return 0;
                 }
 
-               var playerIndex = _.findIndex(table.activePlayer, function (p) {
+                if (!data.playerNo && parseInt(data.amount) == NaN) {
+                    callback("Invalid data");
+                }
+
+                var playerIndex = _.findIndex(table.activePlayer, function (p) {
                     return p + "" == user._id;
                 });
 
                 //already exists
-                if(playerIndex >= 0){
+                if (playerIndex >= 0) {
                     callback("Player Already Added");
                     return 0;
                 }
 
-                Player.find({
-                    table: data.tableId
-                }).sort({
-                    playerNo: -1
-                }).limit(1).exec(function (err, playersData) {
-                    var player = {};
-                    console.log(playersData);
-                    if (playersData && playersData[0]) {
-                        player.playerNo = parseInt(playersData[0].playerNo) + 1;
-                    }
-                    // console.log(player.playerNo);
-                    if (!player.playerNo) {
-                        //  console.log("Inside");
-                        player.playerNo = 1;
-                    }
+                // Player.find({
+                //     table: data.tableId
+                // }).sort({
+                //     playerNo: -1
+                // }).limit(1).exec(function (err, playersData) {
+                //     var player = {};
+                //     console.log(playersData);
+                //     if (playersData && playersData[0]) {
+                //         player.playerNo = parseInt(playersData[0].playerNo) + 1;
+                //     }
+                //     // console.log(player.playerNo);
+                //     if (!player.playerNo) {
+                //         //  console.log("Inside");
+                //         player.playerNo = 1;
+                //     }
+                var player = {};
+                player.user = user._id;
+                player.table = data.tableId;
+                player.playerNo = data.playerNo;
+                player.buyInAmt = data.amount;
+                Player.saveData(player, function (err, player) {
+                    if (err) {
+                        callback(err);
+                    } else {
+                        if (player && player.playerNo == 1) {
+                            //configuring things for rooms befor starting a game. 
+                            // console.log("inside");
+                            // sails.sockets.join('Update', data.tableId);
+                            // sails.sockets.join('ShowWinner', data.tableId);
+                            async.each([1, 2, 3, 4, 5], function (cardNo, callback) {
+                                var comData = {};
+                                comData.cardNo = cardNo;
+                                comData.table = data.tableId;
+                                CommunityCards.saveData(comData, callback);
 
-                    player.user = user._id;
-                    player.table = data.tableId;
-                    Player.saveData(player, function (err, player) {
-                        if (err) {
-                            callback(err);
-                        } else {
-                            if (player && player.playerNo == 1) {
-                                //configuring things for rooms befor starting a game. 
-                                console.log("inside");
-                                // sails.sockets.join('Update', data.tableId);
-                                // sails.sockets.join('ShowWinner', data.tableId);
-                                async.each([1, 2, 3, 4, 5], function (cardNo, callback) {
-                                    var comData = {};
-                                    comData.cardNo = cardNo;
-                                    comData.table = data.tableId;
-                                    CommunityCards.saveData(comData, function () {
-                                        callback();
-                                    });
-
-                                }, function (err, data) {
-                                    if (table.activePlayer) {
-                                        table.activePlayer.push(user._id);
-                                    } else {
-                                        table.activePlayer = [user._id];
-                                    }
-                                    table.save(function (err, data) {
-                                        callback(err, player);
-                                    });
-
+                            }, function (err, data) {
+                                if (table.activePlayer) {
+                                    table.activePlayer.push(user._id);
+                                } else {
+                                    table.activePlayer = [user._id];
+                                }
+                                table.save(function (err, data) {
+                                    callback(err, player);
                                 });
 
-                            } else {
-                                callback(err, player);
-                            }
+                            });
+
+                        } else {
+                            callback(err, player);
                         }
-                    });
+                    }
                 });
+                //  });
             } else {
                 callback("Please Login first");
             }
@@ -236,6 +240,28 @@ var model = {
             }
 
         });
+    },
+    getPrvStatus: function (curStatus) {
+        var status = [
+            'beforeStart',
+            'serve',
+            'preFlop',
+            'Flop',
+            'Turn',
+            'River',
+            'winner'
+        ];
+
+        var index = _.findIndex(status, function (s) {
+            return s == curStatus
+        });
+
+        if (index >= 0) {
+            curStatus = status[index - 1];
+        }
+
+        return curStatus;
+
     },
     updateStatus: function (tableId, callback) {
         var status = [

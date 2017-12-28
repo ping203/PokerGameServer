@@ -66,6 +66,10 @@ var schema = new Schema({
     hasTurnCompleted: {
         type: Boolean,
         default: false
+    },
+    buyInAmt: {
+        type: Number,
+        default: 0
     }
 });
 schema.plugin(deepPopulate, {
@@ -311,6 +315,31 @@ var model = {
             }
         });
     },
+    getAllDetails: function (data, callback) {
+        var tableId = data.tableId;
+        async.parallel({
+            palyers: function (callback) {
+                Player.find({
+                    table: tableId
+                }).exec(callback);
+            },
+            communityCards: function (callback) {
+                CommunityCard.find({
+                    table: tableId
+                }).exec(callback);
+            },
+            pots: function (callback) {
+                Pot.find({
+                    table: tableId
+                }).exec(callback);
+            },
+            table: function (callback) {
+                Table.findOne({
+                    _id: tableId
+                }).exec(callback);
+            }
+        }, callback);
+    },
     newGame: function (data, callback) {
         var Model = this;
         async.waterfall([
@@ -387,7 +416,7 @@ var model = {
                     fwCallback(err, cumCards);
                 });
             },
-            function(arg1, callback){
+            function (arg1, callback) {
                 Pot.remove({}, callback)
             }
         ], function (err, cumCards) {
@@ -917,7 +946,8 @@ var model = {
                                     Player.makeSmallBlind,
                                     Player.nextInPlay,
                                     Player.makeBigBlind,
-                                    
+                                    Player.nextInPlay
+
                                 ], callback);
                             } else {
                                 async.waterfall(

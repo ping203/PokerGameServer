@@ -16,6 +16,9 @@ var controller = {
     findWinner: function (req, res) {
         Player.findWinner(req.body, res.callback);
     },
+    getAllDetails: function(req, res){
+        Player.getAllDetails(req.body, res.callback); 
+    },
     newGame: function (req, res) {
         Player.newGame(req.body, res.callback);
         // var license = getmid({
