@@ -324,7 +324,7 @@ var model = {
                 }).exec(callback);
             },
             communityCards: function (callback) {
-                CommunityCard.find({
+                CommunityCards.find({
                     table: tableId
                 }).exec(callback);
             },
