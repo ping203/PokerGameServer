@@ -1034,32 +1034,38 @@ var model = {
 
     },
     raise: function (data, callback) {
-        async.waterfall([
-            function (callback) { // Remove All raise
-                Player.update({}, {
-                    $set: {
-                        hasRaised: false,
-                        isLastBlind: false,
-                        hasCalled: false,
-                        hasChecked: false,
-                        hasRaisedd: false
-                    }
-                }, {
-                    multi: true
-                }, function (err, cards) {
-                    callback(err);
-                });
-            },
-            Player.currentTurn,
-            function (player, callback) {
-                player.hasRaised = true;
-                player.hasRaisedd = true;
-                player.save(function (err, data) {
-                    callback(err);
-                });
-            },
-            Player.changeTurn
-        ], callback);
+        Player.getPlayer(data, function (err, data) {
+            if (err) {
+                callback(err);
+            } else {
+                async.waterfall([
+                    function (callback) { // Remove All raise
+                        Player.update({}, {
+                            $set: {
+                                hasRaised: false,
+                                isLastBlind: false,
+                                hasCalled: false,
+                                hasChecked: false,
+                                hasRaisedd: false
+                            }
+                        }, {
+                            multi: true
+                        }, function (err, cards) {
+                            callback(err);
+                        });
+                    },
+                    Player.currentTurn,
+                    function (player, callback) {
+                        player.hasRaised = true;
+                        player.hasRaisedd = true;
+                        player.save(function (err, data) {
+                            callback(err);
+                        });
+                    },
+                    Player.changeTurn
+                ], callback);
+            }
+        });
     },
     call: function (data, callback) {
         console.log("inside call", data.tableId);

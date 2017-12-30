@@ -61,6 +61,8 @@ var model = {
                 return (playerNo == p.playerNo && p.round == round);
             });
 
+            console.log(playerAmt);
+
             if (playerAmt) {
                 paidAmt += playerAmt.amount;
             }
@@ -125,6 +127,7 @@ var model = {
             pot.payableAmt = potMaxLimit - paidAmtPerPot; // deduct already paid amount
             console.log("payableAmt", pot.payableAmt);
             pot.potMaxLimit = potMaxLimit;
+            pot.paidAmtPerPot = paidAmtPerPot;
             callAmount += potMaxLimit;
 
         });
@@ -140,10 +143,11 @@ var model = {
         var playerBalances = _.map(PlayersInfo, function (p) {
             var paidPerRound = 0;
 
-            paidPerRound = getAmountForPlayer(potsInfo, p.playerNo, status);
+            paidPerRound = Pot.getAmountForPlayer(potsInfo, p.playerNo, status);
 
-            if(p.palyerNo == currentPlayer.playerNo){
-                currentPlayerBalance = p.user.balance - p.totalAmount + paidPerRound;
+            console.log("paidPerRound playerNo ", paidPerRound);
+            if (p.playerNo == currentPlayer.playerNo) {
+                currentPlayerBalance = p.user.balance - p.totalAmount;
             }
 
             //getAmountForPlayer
@@ -158,6 +162,8 @@ var model = {
         playerBalances.sort(function (a, b) {
             return b - a
         });
+
+        // console.log("currentPlayerBalance", currentPlayerBalance);
 
         //getAmountForPlayer
         //remaining balance
@@ -199,11 +205,20 @@ var model = {
             // if (player) {
             //     deductAmt = player.amount;
             // }
-
             // payAmt = item.potMaxLimit - deductAmt; //substract already paid amount
             if (payAmt > amountTobeAdded) {
                 console.log("splitPot");
-                Pot.splitPot(item, data.tableStatus, data.currentPlayer, amountTobeAdded, callback);
+                var splitPotAmount = amountTobeAdded + item.paidAmtPerPot;
+                console.log("splitPotAmount", splitPotAmount);  
+                Pot.splitPot(item, data.tableStatus, data.currentPlayer, splitPotAmount, function (err, data1) {
+                    var sendData = {
+                        playerNo: data.currentPlayer.playerNo,
+                        amount: amountTobeAdded,
+                        round: data.tableStatus,
+                        potId: item._id
+                    }
+                    Pot.makeEntryAddAmount(sendData, data.currentPlayer, callback);
+                });
             } else {
 
                 if (key == (pots.length - 1)) {
@@ -232,13 +247,13 @@ var model = {
                     return (p.playerNo == currentPlayer.playerNo && p.round == tableStatus)
                 });
 
-                if (playerIndex < 0) {
-                    pot.players.push({
-                        playerNo: currentPlayer.playerNo,
-                        amount: amount,
-                        round: tableStatus
-                    });
-                }
+                // if (playerIndex < 0) {
+                //     pot.players.push({
+                //         playerNo: currentPlayer.playerNo,
+                //         amount: amount,
+                //         round: tableStatus
+                //     });
+                // }
 
                 async.eachOfSeries(pot.players, function (item, key, callback) {
                     console.log(item);
@@ -363,7 +378,7 @@ var model = {
             if (playerIndex >= 0) {
                 Pot.players[playerIndex].amount = parseInt(Pot.players[playerIndex].amount) - parseInt(data.amount);
                 Pot.players[playerIndex].round = data.round;
-                Pot.totalAmount = parseInt(Pot.totalAmount) + parseInt(data.amount);
+                Pot.totalAmount = parseInt(Pot.totalAmount) - parseInt(data.amount);
             } else {
                 var player = {};
                 player.amount = data.amount;
