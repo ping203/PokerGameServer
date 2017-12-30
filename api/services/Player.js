@@ -315,10 +315,44 @@ var model = {
             }
         });
     },
+    getPlayer: function (data, callback) {
+        var pipeLine = [{
+                $match: {
+                    "accessToken": data.accessToken
+                }
+            },
+            {
+                $lookup: {
+                    "from": "players",
+                    "localField": "_id",
+                    "foreignField": "user",
+                    "as": "player"
+                }
+            }
+        ]
+
+        User.aggregate(pipeLine, function (err, data) {
+            if (err) {
+                callback(err);
+            } else {
+                if (_.isEmpty(data)) {
+                    callback("Please Login First To Continue.");
+                } else {
+                    if (_.isEmpty(data.player)) {
+                        callback("Not Registered as a Player.");
+                    } else {
+                        callback(err, data.player);
+                    }
+                }
+            }
+        });
+
+
+    },
     getAllDetails: function (data, callback) {
         var tableId = data.tableId;
         async.parallel({
-            palyers: function (callback) {
+            players: function (callback) {
                 Player.find({
                     table: tableId
                 }).exec(callback);
@@ -801,41 +835,47 @@ var model = {
     },
     allIn: function (data, callback) {
         var tableId = data.tableId;
-        async.waterfall([
-            function (callback) { // Remove All raise
-                Player.update({}, {
-                    $set: {
-                        hasRaised: false,
-                        isLastBlind: false,
-                        hasCalled: false,
-                        hasChecked: false,
-                        hasRaisedd: false
+        Player.getPlayer(data, function (err, data) {
+            if (err) {
+                callback(err);
+            } else {
+                async.waterfall([
+                    function (callback) { // Remove All raise
+                        Player.update({}, {
+                            $set: {
+                                hasRaised: false,
+                                isLastBlind: false,
+                                hasCalled: false,
+                                hasChecked: false,
+                                hasRaisedd: false
+                            }
+                        }, {
+                            multi: true
+                        }, function (err, cards) {
+                            callback(err, tableId);
+                        });
+                    },
+                    Player.currentTurn,
+                    function (player, callback) {
+                        player.isAllIn = true;
+                        player.hasRaised = true;
+                        player.save(function (err, data) {
+                            console.log("playerData", data);
+                            callback(err, data);
+                        });
+                    },
+                    function (player, callback) {
+                        // console.log("callback", callback);
+                        Pot.solvePot(player, 'allIn', function (err, data) {
+                            callback(err);
+                        });
+                    },
+                    function (callback) {
+                        Player.changeTurn(tableId, callback);
                     }
-                }, {
-                    multi: true
-                }, function (err, cards) {
-                    callback(err, tableId);
-                });
-            },
-            Player.currentTurn,
-            function (player, callback) {
-                player.isAllIn = true;
-                player.hasRaised = true;
-                player.save(function (err, data) {
-                    console.log("playerData", data);
-                    callback(err, data);
-                });
-            },
-            function (player, callback) {
-                // console.log("callback", callback);
-                Pot.solvePot(player, 'allIn', function (err, data) {
-                    callback(err);
-                });
-            },
-            function (callback) {
-                Player.changeTurn(tableId, callback);
+                ], callback);
             }
-        ], callback);
+        });
     },
     currentTurn: function (tableId, callback) {
         console.log("tableId", tableId);
@@ -1024,35 +1064,42 @@ var model = {
     call: function (data, callback) {
         console.log("inside call", data.tableId);
         var tableId = data.tableId;
+        Player.getPlayer(data, function (err, data) {
+            if (err) {
+                callback(err);
+            } else {
 
-        async.waterfall([
-            function (callback) { // Remove All raise
-                Player.update({
-                    table: tableId
-                }, {
-                    $set: {
-                        hasCalled: false,
-                        hasChecked: false,
-                        hasRaisedd: false
+                async.waterfall([
+                    function (callback) { // Remove All raise
+                        Player.update({
+                            table: tableId
+                        }, {
+                            $set: {
+                                hasCalled: false,
+                                hasChecked: false,
+                                hasRaisedd: false
+                            }
+                        }, {
+                            multi: true
+                        }, function (err, cards) {
+                            callback(err, tableId);
+                        });
+                    },
+                    Player.currentTurn,
+                    function (player, callback) {
+                        // console.log("inside solvepot");
+                        Pot.solvePot(player, 'call', function (err, data) {
+                            callback(err);
+                        });
+                    },
+                    function (callback) {
+                        Player.changeTurn(tableId, callback);
                     }
-                }, {
-                    multi: true
-                }, function (err, cards) {
-                    callback(err, tableId);
-                });
-            },
-            Player.currentTurn,
-            function (player, callback) {
-                console.log("inside solvepot");
-                Pot.solvePot(player, 'call', function (err, data) {
-                    callback(err);
-                });
-            },
-            function (callback) {
-                Player.changeTurn(tableId, callback);
-            }
 
-        ], callback);
+                ], callback);
+            }
+        });
+
     },
 
     getAllInfo: function (tableId, callback) {
