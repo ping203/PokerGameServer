@@ -180,13 +180,13 @@ var model = {
 
         console.log("allInAmount", allInAmount);
         //return data
-        finalData.tableStatus = status;
-        finalData.currentPlayer = currentPlayer;
-        finalData.callAmount = callAmount;
-        finalData.allInAmount = allInAmount;
-        finalData.potsInfo = potsInfo;
+        allData.tableStatus = status;
+        allData.currentPlayer = currentPlayer;
+        allData.callAmount = callAmount;
+        allData.allInAmount = allInAmount;
+        //finalData.potsInfo = potsInfo;
 
-        callback(null, finalData);
+        callback(null, allData);
     },
     //amountTobeAdded
     addAmtToPot: function (data, callback) {
@@ -209,7 +209,7 @@ var model = {
             if (payAmt > amountTobeAdded) {
                 console.log("splitPot");
                 var splitPotAmount = amountTobeAdded + item.paidAmtPerPot;
-                console.log("splitPotAmount", splitPotAmount);  
+                console.log("splitPotAmount", splitPotAmount);
                 Pot.splitPot(item, data.tableStatus, data.currentPlayer, splitPotAmount, function (err, data1) {
                     var sendData = {
                         playerNo: data.currentPlayer.playerNo,
@@ -295,7 +295,7 @@ var model = {
             }
         });
     },
-    solvePot: function (data, action, callback) {
+    solvePot: function (data, action, amount, callback) {
         var tableId = data.table;
         var playerNo = data.playerNo;
         //  var action = data.action;
@@ -311,6 +311,12 @@ var model = {
                     break;
                 case 'allIn':
                     data.amountTobeAdded = data.allInAmount;
+                    break;
+                case 'raise':
+                    data.amountTobeAdded = amount;
+                    if (amount > data.allInAmount) {
+                        data.amountTobeAdded = data.allInAmount;
+                    }
                     break;
                 default:
                     break;

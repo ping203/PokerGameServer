@@ -866,7 +866,7 @@ var model = {
                     },
                     function (player, callback) {
                         // console.log("callback", callback);
-                        Pot.solvePot(player, 'allIn', function (err, data) {
+                        Pot.solvePot(player, 'allIn', 0, function (err, data) {
                             callback(err);
                         });
                     },
@@ -1034,13 +1034,16 @@ var model = {
 
     },
     raise: function (data, callback) {
+        var tableId = data.tableId;
         Player.getPlayer(data, function (err, data) {
             if (err) {
                 callback(err);
             } else {
                 async.waterfall([
                     function (callback) { // Remove All raise
-                        Player.update({}, {
+                        Player.update({
+                            table: tableId
+                        }, {
                             $set: {
                                 hasRaised: false,
                                 isLastBlind: false,
@@ -1051,7 +1054,7 @@ var model = {
                         }, {
                             multi: true
                         }, function (err, cards) {
-                            callback(err);
+                            callback(err, tableId);
                         });
                     },
                     Player.currentTurn,
@@ -1059,7 +1062,12 @@ var model = {
                         player.hasRaised = true;
                         player.hasRaisedd = true;
                         player.save(function (err, data) {
-                            callback(err);
+                            callback(err, tableId);
+                        });
+                    },
+                    function (player, callback) {
+                        Pot.solvePot(player, 'raise', data.amount, function (err, data) {
+                            callback(err, tableId);
                         });
                     },
                     Player.changeTurn
@@ -1094,7 +1102,7 @@ var model = {
                     Player.currentTurn,
                     function (player, callback) {
                         // console.log("inside solvepot");
-                        Pot.solvePot(player, 'call', function (err, data) {
+                        Pot.solvePot(player, 'call', 0, function (err, data) {
                             callback(err);
                         });
                     },
@@ -1131,84 +1139,107 @@ var model = {
         }, callback);
     },
     check: function (callback) {
-        async.waterfall([
-            function (callback) { // Remove All raise
-                Player.update({}, {
-                    $set: {
-                        hasCalled: false,
-                        hasChecked: false,
-                        hasRaisedd: false
-                    }
-                }, {
-                    multi: true
-                }, function (err, cards) {
-                    callback(err);
-                });
-            },
-            Player.currentTurn,
-            function (player, callback) {
-                player.hasChecked = true;
-                player.save(function (err, data) {
-                    callback(err);
-                });
-            },
-            Player.changeTurn
-        ], callback);
+        var tableId = data.tableId;
+        Player.getPlayer(data, function (err, data) {
+            if (err) {
+                callback(err);
+            } else {
+                async.waterfall([
+                    function (callback) { // Remove All raise
+                        Player.update({
+                            table: tableId
+                        }, {
+                            $set: {
+                                hasCalled: false,
+                                hasChecked: false,
+                                hasRaisedd: false
+                            }
+                        }, {
+                            multi: true
+                        }, function (err, cards) {
+                            callback(err, tableId);
+                        });
+                    },
+                    Player.currentTurn,
+                    function (player, callback) {
+                        player.hasChecked = true;
+                        player.save(function (err, data) {
+                            callback(err, tableId);
+                        });
+                    },
+                    Player.changeTurn
+                ], callback);
+            }
+        });
     },
     fold: function (data, callback) {
-        async.waterfall([
-            function (callback) { // Remove All raise
-                Player.update({}, {
-                    $set: {
-                        hasCalled: false,
-                        hasChecked: false,
-                        hasRaisedd: false
-                    }
-                }, {
-                    multi: true
-                }, function (err, cards) {
-                    callback(err);
-                });
-            },
-            Player.currentTurn,
-            function (player, callback) {
-                player.isFold = true;
-                player.save(function (err, data) {
-                    callback(err);
-                });
-            },
-            function (callback) {
-                Player.find({
-                    isFold: false,
-                    isActive: true
-                }).exec(function (err, data) {
-                    if (err) {
-                        callback(err);
-                    } else {
-                        if (data.length == 1) {
-                            data[0].winner = true;
-                            Player.blastSocketWinner({
-                                winners: data
-                            });
-                            callback();
-                        } else {
-                            callback();
-                        }
-                    }
+        var tableId = data.tableId;
+        Player.getPlayer(data, function (err, data) {
+            if (err) {
+                callback(err);
+            } else {
+                async.waterfall([
+                    function (callback) { // Remove All raise
+                        Player.update({
+                            table: tableId
+                        }, {
+                            $set: {
+                                hasCalled: false,
+                                hasChecked: false,
+                                hasRaisedd: false
+                            }
+                        }, {
+                            multi: true
+                        }, function (err, cards) {
+                            callback(err, tableId);
+                        });
+                    },
+                    Player.currentTurn,
+                    function (player, callback) {
+                        player.isFold = true;
+                        player.save(function (err, data) {
+                            callback(err, tableId);
+                        });
+                    },
+                    function (callback) {
+                        Player.find({
+                            isFold: false,
+                            isActive: true,
+                            table: tableId
+                        }).exec(function (err, data) {
+                            if (err) {
+                                callback(err);
+                            } else {
+                                if (data.length == 1) {
+                                    data[0].winner = true;
+                                    Player.blastSocketWinner({
+                                        winners: data
+                                    });
+                                    callback(null, tableId);
+                                } else {
+                                    callback(null, tableId);
+                                }
+                            }
 
-                });
-            },
-            Player.changeTurn
-        ], callback);
+                        });
+                    },
+                    Player.changeTurn
+                ], callback);
+            }
+        });
     },
     whetherToEndTurn: function (fromPlayer, toPlayer, callback) {
+        var tableId = fromPlayer.table;
         Player.find({
             $or: [{
+                table: tableId,
                 isActive: true,
                 isAllIn: false
             }, {
+                table: tableId,
                 hasRaised: true
             }, {
+                table: tableId,
                 isDealer: true
             }]
         }).sort({
@@ -1220,7 +1251,7 @@ var model = {
                 callback("No Players found in Whether to end turn");
             } else {
                 //getTableID
-                var tableId = allPlayers[0].table;
+                
                 var fromPlayerPartition = _.partition(allPlayers, function (n) {
                     return n.playerNo >= fromPlayer.playerNo;
                 });
