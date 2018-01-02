@@ -5,6 +5,9 @@ var controller = {
     },
     getAllTable: function(req, res){
         Table.getAllTable(req.body, res.callback);
+    },
+    testSocket: function(req, res){
+        sails.sockets.broadcast(req.tableId, "Update", "hi.........");
     }
 };
 module.exports = _.assign(module.exports, controller);
