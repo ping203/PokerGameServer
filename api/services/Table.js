@@ -48,9 +48,14 @@ var schema = new Schema({
         default: 'beforeStart'
     },
     activePlayer: [{
-        type: Schema.Types.ObjectId,
-        ref: 'Player',
-        default: []
+        user: {
+            type: Schema.Types.ObjectId,
+            ref: 'user',
+            default: []
+        },
+        socketId: {
+            type: String,
+        }
     }]
 });
 
@@ -65,6 +70,43 @@ var model = {
         this.find({}).exec(function (err, data) {
             callback(err, data);
         });
+    },
+    connectSocket: function (table, socketId, user, player, callback) {
+        if (table.activePlayer) {
+            table.activePlayer.push({
+                user: user._id,
+                socketId: socketId
+            });
+        } else {
+            table.activePlayer = [{
+                user: user._id,
+                socketId: socketId
+            }];
+        }
+        async.parallel([
+            function (callback) {
+                sails.sockets.join(socketId, table._id, callback);
+            },
+            function (callback) {
+                table.save(callback);
+            }
+        ], function (err, data) {
+            if (err) {
+                callback(err);
+            } else {
+                Table.blastSocket(table._id);
+                callback(player);
+            }
+        });
+        // table.save(function (err, data) {
+        //     sails.sockets.join(socketId, table._id, function(err){
+
+        //     });
+
+        // });
+    },
+    socketBroadcast: function (data, callback) {
+        sails.sockets.broadcast(table._id, 'update', data);
     },
     addUserToTable: function (data, callback) {
         console.log(data);
@@ -141,19 +183,10 @@ var model = {
                                 CommunityCards.saveData(comData, callback);
 
                             }, function (err, data) {
-                                if (table.activePlayer) {
-                                    table.activePlayer.push(user._id);
-                                } else {
-                                    table.activePlayer = [user._id];
-                                }
-                                table.save(function (err, data) {
-                                    callback(err, player);
-                                });
-
+                                Table.connectSocket(table, data.socketId, user, player, callback);
                             });
-
                         } else {
-                            callback(err, player);
+                            Table.connectSocket(table, data.socketId, user, player, callback);
                         }
                     }
                 });
@@ -239,6 +272,31 @@ var model = {
                     callback(err, data);
             }
 
+        });
+    },
+    blastSocket: function (tableId, fromUndo) {
+        Player.getAllDetails({
+            tableId: tableId
+        }, function (err, allData) {
+            // if (!fromUndo) {
+            //     GameLogs.create(function () {});
+            // } else {
+            //     allData.undo = true;
+            // }
+            // if (data && data.newGame) {
+            //     allData.newGame = true;
+            // }
+
+            if (err) {
+                console.log(err);
+            } else {
+                if (data) {
+                    allData.extra = data;
+                } else {
+                    allData.extra = {};
+                }
+                sails.sockets.broadcast(table._id, "Update", allData);             
+            }
         });
     },
     getPrvStatus: function (curStatus) {
