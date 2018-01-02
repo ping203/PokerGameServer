@@ -295,7 +295,7 @@ var model = {
                 // } else {
                 //     allData.extra = {};
                 // }
-                sails.sockets.broadcast(table._id, "Update", allData);             
+                sails.sockets.broadcast(tableId, "Update", allData);             
             }
         });
     },
