@@ -290,11 +290,11 @@ var model = {
             if (err) {
                 console.log(err);
             } else {
-                if (data) {
-                    allData.extra = data;
-                } else {
-                    allData.extra = {};
-                }
+                // if (data) {
+                //     allData.extra = data;
+                // } else {
+                //     allData.extra = {};
+                // }
                 sails.sockets.broadcast(table._id, "Update", allData);             
             }
         });
