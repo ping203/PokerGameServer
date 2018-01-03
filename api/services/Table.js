@@ -101,7 +101,7 @@ var model = {
                 //        console.log(socketId);
                 // });
                 Table.blastSocket(table._id);
-                callback(player);
+                callback(err,player);
             }
         });
         // table.save(function (err, data) {
