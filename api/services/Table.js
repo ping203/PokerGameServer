@@ -51,7 +51,6 @@ var schema = new Schema({
         user: {
             type: Schema.Types.ObjectId,
             ref: 'user',
-            default: []
         },
         socketId: {
             type: String,
@@ -85,15 +84,22 @@ var model = {
         }
         async.parallel([
             function (callback) {
-                sails.sockets.join(socketId, table._id, callback);
+                console.log(table._id);
+                console.log(table._id + "");
+                sails.sockets.join(socketId, 'room'+ table._id , callback);
             },
             function (callback) {
                 table.save(callback);
             }
         ], function (err, data) {
             if (err) {
+                console.log(err);
                 callback(err);
             } else {
+                //  console.log(sails.sockets.rooms());
+                // sails.sockets.subscribers(table._id, function(err, socketId){
+                //        console.log(socketId);
+                // });
                 Table.blastSocket(table._id);
                 callback(player);
             }
@@ -110,6 +116,18 @@ var model = {
     },
     addUserToTable: function (data, callback) {
         console.log(data);
+        
+        
+        // sails.sockets.join(data.socketId, 'room'+ data.tableId , function(err, data1){
+        //     sails.sockets.broadcast('room' + data.tableId, "Update", {name:"mansi"});   
+        // });
+        // sails.sockets.join(data.socketId, 'myRoom', function(err, data){
+        //     if(err){
+        //         console.log(err);
+        //     }
+        //     sails.sockets.broadcast('myRoom', "Update", "data send");   
+        // });
+        //sails.sockets.broadcast(data.socketId, 'Update', "sent data");
         async.parallel({
             user: function (callback) {
                 User.findOne({
@@ -182,7 +200,7 @@ var model = {
                                 comData.table = data.tableId;
                                 CommunityCards.saveData(comData, callback);
 
-                            }, function (err, data) {
+                            }, function (err, data1) {
                                 Table.connectSocket(table, data.socketId, user, player, callback);
                             });
                         } else {
@@ -274,6 +292,7 @@ var model = {
 
         });
     },
+    
     blastSocket: function (tableId, fromUndo) {
         Player.getAllDetails({
             tableId: tableId
@@ -295,7 +314,8 @@ var model = {
                 // } else {
                 //     allData.extra = {};
                 // }
-                sails.sockets.broadcast(tableId, "Update", allData);             
+                
+                sails.sockets.broadcast("room" + tableId, "Update", allData);             
             }
         });
     },

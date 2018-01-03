@@ -70,6 +70,10 @@ var schema = new Schema({
     buyInAmt: {
         type: Number,
         default: 0
+    },
+    turn:{
+        type: String,
+        default: ''
     }
 });
 schema.plugin(deepPopulate, {
@@ -925,6 +929,7 @@ var model = {
                                 addTurn: function (callback) {
                                     var newTurnIndex = (turnIndex + 1) % players.length;
                                     var player = players[newTurnIndex];
+                                    player.turn = 1;
                                     player.isTurn = true;
                                     player.save(callback);
                                 }
@@ -1263,8 +1268,19 @@ var model = {
                 });
                 var fromPlayerToPlayer = _.slice(fromPlayerFirst, 0, toIndex + 1);
 
+                var allTurnDoneIndex = _.findIndex(allPlayers, function(p){
+                     return !p.turn && !p.isFold
+                });
+
+                
+
+                var allTurnDone = false;
                 var removeAllTurn = false;
                 var isWinner = false;
+
+                if(allTurnDoneIndex == -1){
+                    allTurnDone = true;
+               }
                 // case 1 
                 // When fromPlayer.isLastBlind checks
                 if (fromPlayer.isLastBlind) {
