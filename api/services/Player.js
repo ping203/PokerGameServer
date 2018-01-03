@@ -71,7 +71,7 @@ var schema = new Schema({
         type: Number,
         default: 0
     },
-    turn:{
+    turn: {
         type: String,
         default: ''
     }
@@ -1235,6 +1235,148 @@ var model = {
     },
     whetherToEndTurn: function (fromPlayer, toPlayer, callback) {
         var tableId = fromPlayer.table;
+        async.parallel({
+            allPlayers: function (callback) {
+                Player.find({
+                    $or: [{
+                        table: tableId,
+                        isActive: true,
+                        isAllIn: false
+                    }, {
+                        table: tableId,
+                        hasRaised: true
+                    }, {
+                        table: tableId,
+                        isDealer: true
+                    }]
+                }).sort({
+                    playerNo: 1
+                }).exec(callback);
+            },
+            allDetails: function(callback){
+                getAllDetails(tableId, callback);
+            }
+        }, function(err, data){
+            if (err) {
+                callback(err);
+            } else if (_.isEmpty(allPlayers)) {
+                callback("No Players found in Whether to end turn");
+            } else {
+                //getTableID
+
+                var fromPlayerPartition = _.partition(allPlayers, function (n) {
+                    return n.playerNo >= fromPlayer.playerNo;
+                });
+
+                var fromPlayerFirst = _.concat(fromPlayerPartition[0], fromPlayerPartition[1]);
+
+                var toIndex = _.findIndex(fromPlayerFirst, function (n) {
+                    return n.playerNo == toPlayer.playerNo;
+                });
+                var fromPlayerToPlayer = _.slice(fromPlayerFirst, 0, toIndex + 1);
+
+                var allTurnDoneIndex = _.findIndex(allPlayers, function (p) {
+                    return !p.turn && !p.isFold
+                });
+
+
+
+                var allTurnDone = false;
+                var removeAllTurn = false;
+                var isWinner = false;
+
+
+                if (allTurnDoneIndex == -1) {
+                    allTurnDone = true;
+                }
+                
+                // case 1 
+                // When fromPlayer.isLastBlind checks
+                if (fromPlayer.isLastBlind) {
+                    red(1);
+                    removeAllTurn = true;
+                }
+
+                // case 2
+                // When toPlayer.hasRaised
+                var isRaisedBetween = _.findIndex(fromPlayerToPlayer, function (n, index) {
+                    return (n.hasRaised && index !== 0);
+                });
+                // Find Players between 
+                if (isRaisedBetween > 0) {
+                    red(2);
+                    removeAllTurn = true;
+                }
+
+                // case 3
+                // When fromPlayer.isDealer && noOne has Raised
+                var lastRaise = _.findIndex(allPlayers, function (n) {
+                    return n.hasRaised;
+                });
+                var lastBlind = _.findIndex(allPlayers, function (n) {
+                    return n.isLastBlind;
+                });
+
+                var isDealerBetween = _.findIndex(fromPlayerToPlayer, function (n, index) {
+                    return (n.isDealer && (index != (fromPlayerToPlayer.length - 1)));
+                });
+                // Find Players between 
+                if (isRaisedBetween > 0) {
+                    red(3);
+                    removeAllTurn = true;
+                }
+                // Main Error in Dealer Related Search WHEN Dealer Folds
+                if (lastRaise < 0 && lastBlind < 0 && isDealerBetween >= 0) {
+                    removeAllTurn = true;
+                }
+
+
+                //case 4 from Player and To Player is Same
+                if (fromPlayer.playerNo == toPlayer.playerNo) {
+                    removeAllTurn = true;
+                }
+
+
+                if (removeAllTurn) {
+                    //Show Winner to be checked
+                    async.parallel({
+                        removeServe: function (callback) {
+                            CommunityCards.startServe(tableId, callback);
+                        },
+                        updateStatus: function (callback) {
+                            Table.updateStatus(tableId, callback);
+                        },
+                        updatePlayers: function (callback) {
+                            Player.update({
+                                table:tableId
+                            }, {
+                                $set: {
+                                    hasRaised: false,
+                                    isLastBlind: false,
+                                    isTurn: false,
+                                    hasCalled: false,
+                                    hasChecked: false,
+                                    hasRaisedd: false,
+                                    turn: false
+                                }
+                            }, {
+                                multi: true
+                            }, function (err) {
+                                callback(err);
+                            });
+                        }
+                    }, function (err, data) {
+                        callback(err);
+                    });
+
+                } else {
+                    callback(null);
+                }
+            }
+        })
+    },
+    whetherToEndTurn: function (fromPlayer, toPlayer, callback) {
+        var tableId = fromPlayer.table;
         Player.find({
             $or: [{
                 table: tableId,
@@ -1256,7 +1398,7 @@ var model = {
                 callback("No Players found in Whether to end turn");
             } else {
                 //getTableID
-                
+
                 var fromPlayerPartition = _.partition(allPlayers, function (n) {
                     return n.playerNo >= fromPlayer.playerNo;
                 });
@@ -1268,19 +1410,21 @@ var model = {
                 });
                 var fromPlayerToPlayer = _.slice(fromPlayerFirst, 0, toIndex + 1);
 
-                var allTurnDoneIndex = _.findIndex(allPlayers, function(p){
-                     return !p.turn && !p.isFold
+                var allTurnDoneIndex = _.findIndex(allPlayers, function (p) {
+                    return !p.turn && !p.isFold
                 });
 
-                
+
 
                 var allTurnDone = false;
                 var removeAllTurn = false;
                 var isWinner = false;
 
-                if(allTurnDoneIndex == -1){
+
+                if (allTurnDoneIndex == -1) {
                     allTurnDone = true;
-               }
+                }
+
                 // case 1 
                 // When fromPlayer.isLastBlind checks
                 if (fromPlayer.isLastBlind) {

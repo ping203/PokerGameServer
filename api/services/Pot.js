@@ -70,6 +70,13 @@ var model = {
 
         return paidAmt;
     },
+    equalAmountStatus: function (allData, callback) {
+        _.each(allData.players, function (err, player) {
+            _.each(allData.pots, function (err, pot) {
+                  
+            });
+        });
+    },
     solveInfo: function (allData, callback) {
         var finalData = {};
         var tableInfo = allData.table;
