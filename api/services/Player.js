@@ -72,8 +72,8 @@ var schema = new Schema({
         default: 0
     },
     turn: {
-        type: String,
-        default: ''
+        type: Boolean,
+        default: false
     }
 });
 schema.plugin(deepPopulate, {
@@ -339,10 +339,12 @@ var model = {
             if (err) {
                 callback(err);
             } else {
-                if (_.isEmpty(data)) {
+                if (_.isEmpty(data[0])) {
+
                     callback("Please Login First To Continue.");
                 } else {
-                    if (_.isEmpty(data.player)) {
+                    //console.log(data.player);
+                    if (_.isEmpty(data[0].player)) {
                         callback("Not Registered as a Player.");
                     } else {
                         callback(err, data.player);
@@ -380,6 +382,7 @@ var model = {
     },
     newGame: function (data, callback) {
         var Model = this;
+        var tableId = data.tableId;
         async.waterfall([
             function (callback) {
                 GameLogs.flush(function (err, data) {
@@ -388,6 +391,7 @@ var model = {
             },
             function (callback) { // Next Dealer
                 Model.find({
+                    table: tableId,
                     isActive: true
                 }).exec(function (err, players) {
                     if (err) {
@@ -419,7 +423,9 @@ var model = {
                 });
             },
             function (fwCallback) {
-                Model.update({}, {
+                Model.update({
+                    table: tableId
+                }, {
                     $set: {
                         isFold: false,
                         cards: [],
@@ -433,7 +439,8 @@ var model = {
                         hasCalled: false,
                         isSmallBlind: false,
                         isBigBlind: false,
-                        totalAmount: 0
+                        totalAmount: 0,
+                        hasTurnCompleted: false
                     }
                 }, {
                     multi: true
@@ -442,7 +449,9 @@ var model = {
                 });
             },
             function (arg1, fwCallback) {
-                CommunityCards.update({}, {
+                CommunityCards.update({
+                    table: tableId
+                }, {
                     $set: {
                         cardValue: "",
                         isOpen: false,
@@ -455,10 +464,19 @@ var model = {
                 });
             },
             function (arg1, callback) {
-                Pot.remove({}, callback)
+                Pot.remove({
+                    table: tableId
+                }, callback)
+            },
+            function (arg1, callback) {
+                Table.update({
+                    _id: tableId
+                }, {
+                    status: "beforeStart",
+                }).exec(callback);
             }
         ], function (err, cumCards) {
-            Player.blastSocket({
+            Table.blastSocket(tableId, {
                 newGame: true
             });
             callback(err, cumCards);
@@ -511,7 +529,7 @@ var model = {
                                     players[turnIndex].save(callback);
                                 }
                             }, function (err, data) {
-                                Model.blastSocket();
+                                Table.blastSocket(data.tableId);
                                 callback(err, data);
                             });
                         } else {
@@ -641,7 +659,9 @@ var model = {
                                 }).exec(callback);
                             },
                             communityCards: function (callback) {
-                                CommunityCards.find().exec(callback);
+                                CommunityCards.find({
+                                    table: tableId
+                                }).exec(callback);
                             }
                         }, function (err, response) {
                             console.log(response);
@@ -724,7 +744,7 @@ var model = {
                                                 //     });
                                                 // }
                                             ], function (err, data) {
-                                                Player.blastSocket({
+                                                Table.blastSocket(tableId, {
                                                     player: true,
                                                     value: response.players[toServe].playerNo
                                                 });
@@ -740,13 +760,13 @@ var model = {
                                             //table._id = tableId;
                                             //table.status = 'serve';
                                             Table.updateStatus(tableId, function (err, data) {
-                                                Player.blastSocket({
+                                                Table.blastSocket(tableId, {
                                                     player: true,
                                                     value: response.players[toServe].playerNo
                                                 });
                                             });
                                         } else {
-                                            Player.blastSocket({
+                                            Table.blastSocket(tableId, {
                                                 player: true,
                                                 value: response.players[toServe].playerNo
                                             });
@@ -761,19 +781,19 @@ var model = {
                                     if (err) {
                                         callback(err);
                                     } else {
-
-                                        callback(err, "Card Provided to Community Card No " + (communityCardCount + 1));
+                                        communityCardCount++;
+                                        callback(err, "Card Provided to Community Card No " + (communityCardCount));
 
                                         if (communityCardCount == 3 || communityCardCount == 5 || communityCardCount == 7) {
                                             Player.makeTurn(communityCardCount, tableId, function (err, data) {
-                                                Player.blastSocket({
+                                                Table.blastSocket(tableId, {
                                                     player: false,
                                                     community: true,
                                                     value: communityCardCount
                                                 });
                                             });
                                         } else {
-                                            Player.blastSocket({
+                                            Table.blastSocket(tableId, {
                                                 player: false,
                                                 community: true,
                                                 value: communityCardCount
@@ -906,10 +926,12 @@ var model = {
             function (playerFromTop, callback) {
                 Player.find({
                     $or: [{
+                        table: tableId,
                         isActive: true,
                         isFold: false,
                         isAllIn: false
                     }, {
+                        table: tableId,
                         isTurn: true
                     }]
                 }).exec(function (err, players) {
@@ -923,20 +945,21 @@ var model = {
                             async.parallel({
                                 removeTurn: function (callback) {
                                     var player = players[turnIndex];
+                                    player.hasTurnCompleted = true;
                                     player.isTurn = false;
                                     player.save(callback);
                                 },
                                 addTurn: function (callback) {
                                     var newTurnIndex = (turnIndex + 1) % players.length;
                                     var player = players[newTurnIndex];
-                                    player.turn = 1;
+                                    player.turn = true;
                                     player.isTurn = true;
                                     player.save(callback);
                                 }
                             }, function (err, data) {
                                 callback(err, data);
                                 Player.whetherToEndTurn(data.removeTurn[0], data.addTurn[0], function (err) {
-                                    Player.blastSocket();
+                                    Table.blastSocket(tableId);
                                 });
                             });
                         }
@@ -1019,13 +1042,14 @@ var model = {
                                         },
                                         function (callback) {
                                             Player.findDealerNext({
-                                                table: TableId
+                                                table: tableId
                                             }, callback);
                                         }
                                     ], callback);
                             }
                         },
                         function (player, callback) { // Enable turn from the same
+                            // player.turn = true;
                             player.isTurn = true;
                             player.save(callback);
                         }
@@ -1253,17 +1277,20 @@ var model = {
                     playerNo: 1
                 }).exec(callback);
             },
-            allDetails: function(callback){
-                getAllDetails(tableId, callback);
+            allDetails: function (callback) {
+                Player.getAllDetails({
+                    tableId: tableId
+                }, callback);
             }
-        }, function(err, data){
+        }, function (err, data) {
             if (err) {
                 callback(err);
-            } else if (_.isEmpty(allPlayers)) {
+            } else if (_.isEmpty(data.allPlayers)) {
                 callback("No Players found in Whether to end turn");
             } else {
                 //getTableID
-
+                console.log("whether to end turn");
+                var allPlayers = data.allPlayers;
                 var fromPlayerPartition = _.partition(allPlayers, function (n) {
                     return n.playerNo >= fromPlayer.playerNo;
                 });
@@ -1276,7 +1303,7 @@ var model = {
                 var fromPlayerToPlayer = _.slice(fromPlayerFirst, 0, toIndex + 1);
 
                 var allTurnDoneIndex = _.findIndex(allPlayers, function (p) {
-                    return !p.turn && !p.isFold
+                    return !p.hasTurnCompleted && !p.isFold && !p.isAllIn
                 });
 
 
@@ -1285,50 +1312,59 @@ var model = {
                 var removeAllTurn = false;
                 var isWinner = false;
 
-
-                if (allTurnDoneIndex == -1) {
+                console.log("allTurnDoneIndex ", allTurnDoneIndex);
+                if (allTurnDoneIndex < 0) {
                     allTurnDone = true;
                 }
-                
-                // case 1 
-                // When fromPlayer.isLastBlind checks
-                if (fromPlayer.isLastBlind) {
-                    red(1);
+
+                console.log("all data", data.allDetails);
+                var amountStatus = Pot.equalAmountStatus(data.allDetails);
+
+                console.log("allTurnDone", allTurnDone);
+                console.log("amountStatus", amountStatus);
+                if (allTurnDone && amountStatus) {
                     removeAllTurn = true;
                 }
+
+                // case 1 
+                // When fromPlayer.isLastBlind checks
+                // if (fromPlayer.isLastBlind) {
+                //     red(1);
+                //     removeAllTurn = true;
+                // }
 
                 // case 2
                 // When toPlayer.hasRaised
-                var isRaisedBetween = _.findIndex(fromPlayerToPlayer, function (n, index) {
-                    return (n.hasRaised && index !== 0);
-                });
-                // Find Players between 
-                if (isRaisedBetween > 0) {
-                    red(2);
-                    removeAllTurn = true;
-                }
+                // var isRaisedBetween = _.findIndex(fromPlayerToPlayer, function (n, index) {
+                //     return (n.hasRaised && index !== 0);
+                // });
+                // // Find Players between 
+                // if (isRaisedBetween > 0) {
+                //     red(2);
+                //     removeAllTurn = true;
+                // }
 
                 // case 3
                 // When fromPlayer.isDealer && noOne has Raised
-                var lastRaise = _.findIndex(allPlayers, function (n) {
-                    return n.hasRaised;
-                });
-                var lastBlind = _.findIndex(allPlayers, function (n) {
-                    return n.isLastBlind;
-                });
+                // var lastRaise = _.findIndex(allPlayers, function (n) {
+                //     return n.hasRaised;
+                // });
+                // var lastBlind = _.findIndex(allPlayers, function (n) {
+                //     return n.isLastBlind;
+                // });
 
-                var isDealerBetween = _.findIndex(fromPlayerToPlayer, function (n, index) {
-                    return (n.isDealer && (index != (fromPlayerToPlayer.length - 1)));
-                });
-                // Find Players between 
-                if (isRaisedBetween > 0) {
-                    red(3);
-                    removeAllTurn = true;
-                }
+                // var isDealerBetween = _.findIndex(fromPlayerToPlayer, function (n, index) {
+                //     return (n.isDealer && (index != (fromPlayerToPlayer.length - 1)));
+                // });
+                // // Find Players between 
+                // if (isRaisedBetween > 0) {
+                //     red(3);
+                //     removeAllTurn = true;
+                // }
                 // Main Error in Dealer Related Search WHEN Dealer Folds
-                if (lastRaise < 0 && lastBlind < 0 && isDealerBetween >= 0) {
-                    removeAllTurn = true;
-                }
+                // if (lastRaise < 0 && lastBlind < 0 && isDealerBetween >= 0) {
+                //     removeAllTurn = true;
+                // }
 
 
                 //case 4 from Player and To Player is Same
@@ -1348,7 +1384,7 @@ var model = {
                         },
                         updatePlayers: function (callback) {
                             Player.update({
-                                table:tableId
+                                table: tableId
                             }, {
                                 $set: {
                                     hasRaised: false,
@@ -1357,7 +1393,7 @@ var model = {
                                     hasCalled: false,
                                     hasChecked: false,
                                     hasRaisedd: false,
-                                    turn: false
+                                    whetherToEndTurn: false
                                 }
                             }, {
                                 multi: true
@@ -1375,140 +1411,140 @@ var model = {
             }
         })
     },
-    whetherToEndTurn: function (fromPlayer, toPlayer, callback) {
-        var tableId = fromPlayer.table;
-        Player.find({
-            $or: [{
-                table: tableId,
-                isActive: true,
-                isAllIn: false
-            }, {
-                table: tableId,
-                hasRaised: true
-            }, {
-                table: tableId,
-                isDealer: true
-            }]
-        }).sort({
-            playerNo: 1
-        }).exec(function (err, allPlayers) {
-            if (err) {
-                callback(err);
-            } else if (_.isEmpty(allPlayers)) {
-                callback("No Players found in Whether to end turn");
-            } else {
-                //getTableID
+    // whetherToEndTurn: function (fromPlayer, toPlayer, callback) {
+    //     var tableId = fromPlayer.table;
+    //     Player.find({
+    //         $or: [{
+    //             table: tableId,
+    //             isActive: true,
+    //             isAllIn: false
+    //         }, {
+    //             table: tableId,
+    //             hasRaised: true
+    //         }, {
+    //             table: tableId,
+    //             isDealer: true
+    //         }]
+    //     }).sort({
+    //         playerNo: 1
+    //     }).exec(function (err, allPlayers) {
+    //         if (err) {
+    //             callback(err);
+    //         } else if (_.isEmpty(allPlayers)) {
+    //             callback("No Players found in Whether to end turn");
+    //         } else {
+    //             //getTableID
 
-                var fromPlayerPartition = _.partition(allPlayers, function (n) {
-                    return n.playerNo >= fromPlayer.playerNo;
-                });
+    //             var fromPlayerPartition = _.partition(allPlayers, function (n) {
+    //                 return n.playerNo >= fromPlayer.playerNo;
+    //             });
 
-                var fromPlayerFirst = _.concat(fromPlayerPartition[0], fromPlayerPartition[1]);
+    //             var fromPlayerFirst = _.concat(fromPlayerPartition[0], fromPlayerPartition[1]);
 
-                var toIndex = _.findIndex(fromPlayerFirst, function (n) {
-                    return n.playerNo == toPlayer.playerNo;
-                });
-                var fromPlayerToPlayer = _.slice(fromPlayerFirst, 0, toIndex + 1);
+    //             var toIndex = _.findIndex(fromPlayerFirst, function (n) {
+    //                 return n.playerNo == toPlayer.playerNo;
+    //             });
+    //             var fromPlayerToPlayer = _.slice(fromPlayerFirst, 0, toIndex + 1);
 
-                var allTurnDoneIndex = _.findIndex(allPlayers, function (p) {
-                    return !p.turn && !p.isFold
-                });
-
-
-
-                var allTurnDone = false;
-                var removeAllTurn = false;
-                var isWinner = false;
+    //             var allTurnDoneIndex = _.findIndex(allPlayers, function (p) {
+    //                 return !p.turn && !p.isFold
+    //             });
 
 
-                if (allTurnDoneIndex == -1) {
-                    allTurnDone = true;
-                }
 
-                // case 1 
-                // When fromPlayer.isLastBlind checks
-                if (fromPlayer.isLastBlind) {
-                    red(1);
-                    removeAllTurn = true;
-                }
-
-                // case 2
-                // When toPlayer.hasRaised
-                var isRaisedBetween = _.findIndex(fromPlayerToPlayer, function (n, index) {
-                    return (n.hasRaised && index !== 0);
-                });
-                // Find Players between 
-                if (isRaisedBetween > 0) {
-                    red(2);
-                    removeAllTurn = true;
-                }
-
-                // case 3
-                // When fromPlayer.isDealer && noOne has Raised
-                var lastRaise = _.findIndex(allPlayers, function (n) {
-                    return n.hasRaised;
-                });
-                var lastBlind = _.findIndex(allPlayers, function (n) {
-                    return n.isLastBlind;
-                });
-
-                var isDealerBetween = _.findIndex(fromPlayerToPlayer, function (n, index) {
-                    return (n.isDealer && (index != (fromPlayerToPlayer.length - 1)));
-                });
-                // Find Players between 
-                if (isRaisedBetween > 0) {
-                    red(3);
-                    removeAllTurn = true;
-                }
-                // Main Error in Dealer Related Search WHEN Dealer Folds
-                if (lastRaise < 0 && lastBlind < 0 && isDealerBetween >= 0) {
-                    removeAllTurn = true;
-                }
+    //             var allTurnDone = false;
+    //             var removeAllTurn = false;
+    //             var isWinner = false;
 
 
-                //case 4 from Player and To Player is Same
-                if (fromPlayer.playerNo == toPlayer.playerNo) {
-                    removeAllTurn = true;
-                }
+    //             if (allTurnDoneIndex == -1) {
+    //                 allTurnDone = true;
+    //             }
+
+    //             // case 1 
+    //             // When fromPlayer.isLastBlind checks
+    //             if (fromPlayer.isLastBlind) {
+    //                 red(1);
+    //                 removeAllTurn = true;
+    //             }
+
+    //             // case 2
+    //             // When toPlayer.hasRaised
+    //             var isRaisedBetween = _.findIndex(fromPlayerToPlayer, function (n, index) {
+    //                 return (n.hasRaised && index !== 0);
+    //             });
+    //             // Find Players between 
+    //             if (isRaisedBetween > 0) {
+    //                 red(2);
+    //                 removeAllTurn = true;
+    //             }
+
+    //             // case 3
+    //             // When fromPlayer.isDealer && noOne has Raised
+    //             var lastRaise = _.findIndex(allPlayers, function (n) {
+    //                 return n.hasRaised;
+    //             });
+    //             var lastBlind = _.findIndex(allPlayers, function (n) {
+    //                 return n.isLastBlind;
+    //             });
+
+    //             var isDealerBetween = _.findIndex(fromPlayerToPlayer, function (n, index) {
+    //                 return (n.isDealer && (index != (fromPlayerToPlayer.length - 1)));
+    //             });
+    //             // Find Players between 
+    //             if (isRaisedBetween > 0) {
+    //                 red(3);
+    //                 removeAllTurn = true;
+    //             }
+    //             // Main Error in Dealer Related Search WHEN Dealer Folds
+    //             if (lastRaise < 0 && lastBlind < 0 && isDealerBetween >= 0) {
+    //                 removeAllTurn = true;
+    //             }
 
 
-                if (removeAllTurn) {
-                    //Show Winner to be checked
-                    async.parallel({
-                        removeServe: function (callback) {
-                            CommunityCards.startServe(tableId, callback);
-                        },
-                        updateStatus: function (callback) {
-                            Table.updateStatus(tableId, callback);
-                        },
-                        updatePlayers: function (callback) {
-                            Player.update({}, {
-                                $set: {
-                                    hasRaised: false,
-                                    isLastBlind: false,
-                                    isTurn: false,
-                                    hasCalled: false,
-                                    hasChecked: false,
-                                    hasRaisedd: false
-                                }
-                            }, {
-                                multi: true
-                            }, function (err) {
-                                callback(err);
-                            });
-                        }
-                    }, function (err, data) {
-                        callback(err);
-                    });
-
-                } else {
-                    callback(null);
-                }
-            }
-        });
+    //             //case 4 from Player and To Player is Same
+    //             if (fromPlayer.playerNo == toPlayer.playerNo) {
+    //                 removeAllTurn = true;
+    //             }
 
 
-    },
+    //             if (removeAllTurn) {
+    //                 //Show Winner to be checked
+    //                 async.parallel({
+    //                     removeServe: function (callback) {
+    //                         CommunityCards.startServe(tableId, callback);
+    //                     },
+    //                     updateStatus: function (callback) {
+    //                         Table.updateStatus(tableId, callback);
+    //                     },
+    //                     updatePlayers: function (callback) {
+    //                         Player.update({}, {
+    //                             $set: {
+    //                                 hasRaised: false,
+    //                                 isLastBlind: false,
+    //                                 isTurn: false,
+    //                                 hasCalled: false,
+    //                                 hasChecked: false,
+    //                                 hasRaisedd: false
+    //                             }
+    //                         }, {
+    //                             multi: true
+    //                         }, function (err) {
+    //                             callback(err);
+    //                         });
+    //                     }
+    //                 }, function (err, data) {
+    //                     callback(err);
+    //                 });
+
+    //             } else {
+    //                 callback(null);
+    //             }
+    //         }
+    //     });
+
+
+    // },
     findLastBlindNext: function (tableId, callback) {
         async.waterfall([
             function (callback) {

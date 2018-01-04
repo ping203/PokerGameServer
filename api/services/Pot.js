@@ -56,26 +56,84 @@ var model = {
     },
     getAmountForPlayer: function (potsInfo, playerNo, round) {
         var paidAmt = 0;
+        console.log("potsInfo", potsInfo);
+        console.log("playerNo", playerNo);
+        console.log("round", round);
         _.each(potsInfo, function (pot) {
             var playerAmt = _.find(pot.players, function (p) {
                 return (playerNo == p.playerNo && p.round == round);
             });
 
-            console.log(playerAmt);
+            console.log("getAmountForPlayer playerAmt", playerAmt);
 
             if (playerAmt) {
                 paidAmt += playerAmt.amount;
             }
         });
-
+        console.log("paidAmt", paidAmt);
         return paidAmt;
     },
     equalAmountStatus: function (allData, callback) {
-        _.each(allData.players, function (err, player) {
-            _.each(allData.pots, function (err, pot) {
-                  
-            });
+        var amountStatus = false;
+        var playerAmount = [];
+        var allInPlayerAmount = [];
+        var amountRemaining = false;
+        var round = allData.table['status'];
+        var activePlayers = _.filter(allData.players, function (p) {
+            return !p.isAllIn && p.isActive && !p.fold
         });
+
+        var allInPlayer = _.filter(allData.players, function (p) {
+            return p.isAllIn && !p.fold
+        });
+
+        _.each(allInPlayer, function (p) {
+            allInPlayerAmount.push(Pot.getAmountForPlayer(allData.pots, p.playerNo, round));
+        });
+
+        console.log("allInPlayerAmount", allInPlayerAmount);
+        console.log("activePlayers", activePlayers);
+        console.log("allData.pots", allData.pots);
+
+
+        _.each(activePlayers, function (p) {
+            playerAmount.push(Pot.getAmountForPlayer(allData.pots, p.playerNo, round));
+        });
+
+        console.log("playerAmount", playerAmount);
+        //all have equal amounts and none of them has sone AllIn
+        if (_.uniq(playerAmount).length == 1 && allInPlayerAmount.length == 0) {
+            amountStatus = true;
+            //    return amountStatus;
+        }
+        //all players have done AllIn
+        if (activePlayers.length == 0) {
+            amountStatus = true;
+        }
+
+        if (allInPlayerAmount.length > 0) {
+            _.each(allInPlayerAmount, function (amount) {
+
+                _.each(playerAmount, function (pa) {
+                    if (pa < amount) {
+                        amountRemaining = true;
+                        return false;
+                    }
+                });
+                if (amountRemaining == true) {
+                    return false;
+                }
+            });
+        }
+
+
+        //when allin amount is larger than paid amount 
+        if (!amountRemaining && _.uniq(playerAmount).length == 1) {
+            amountStatus = true;
+        }
+
+        return amountStatus;
+
     },
     solveInfo: function (allData, callback) {
         var finalData = {};
@@ -154,7 +212,7 @@ var model = {
 
             console.log("paidPerRound playerNo ", paidPerRound);
             if (p.playerNo == currentPlayer.playerNo) {
-                currentPlayerBalance = p.user.balance - p.totalAmount;
+                currentPlayerBalance = p.buyInAmt - p.totalAmount;
             }
 
             //getAmountForPlayer
@@ -162,8 +220,7 @@ var model = {
             // if (playerRound) {
             //     paidPerRound = playerRound.amount
             // }
-
-            return p.user.balance - p.totalAmount + paidPerRound;
+            return p.buyInAmt - p.totalAmount + paidPerRound;
         });
         //var secondHighPlAmt =  playerBalances[1]
         playerBalances.sort(function (a, b) {
@@ -174,9 +231,9 @@ var model = {
 
         //getAmountForPlayer
         //remaining balance
-        //var currentPlayerBalance = currentPlayer.user.balance - currentPlayer.totalAmount + ;   
-        //var currentPlayerBalance = currentPlayer.user.balance - currentPlayer.totalAmount + ;   
-        //var currentPlayerBalance = currentPlayer.user.balance - currentPlayer.totalAmount + ;
+        //var currentPlayerBalance = currentPlayer.BuyIn - currentPlayer.totalAmount + ;   
+        //var currentPlayerBalance = currentPlayer.BuyIn - currentPlayer.totalAmount + ;   
+        //var currentPlayerBalance = currentPlayer.BuyIn - currentPlayer.totalAmount + ;
         console.log("currentPlayerBalance", currentPlayerBalance);
         console.log("playerBalances", playerBalances);
         if (playerBalances[1] < currentPlayerBalance) {
@@ -197,7 +254,7 @@ var model = {
     },
     //amountTobeAdded
     addAmtToPot: function (data, callback) {
-        var pots = data.potsInfo;
+        var pots = data.pots;
         var amountTobeAdded = data.amountTobeAdded;
         console.log("amountTobeAdded", amountTobeAdded);
         async.eachOfSeries(pots, function (item, key, callback) {
@@ -349,7 +406,7 @@ var model = {
             }
             if (Pot.players) {
                 var playerIndex = _.findIndex(Pot.players, function (p) {
-                    return (p.playerNo == data.playerNo);
+                    return (p.playerNo == data.playerNo && p.round == data.round);
                 });
             }
             if (playerIndex >= 0) {
@@ -385,7 +442,7 @@ var model = {
             }
             if (Pot.players) {
                 var playerIndex = _.findIndex(Pot.players, function (p) {
-                    return (p.playerNo == data.playerNo);
+                    return (p.playerNo == data.playerNo && p.round == data.round);
                 });
             }
             if (playerIndex >= 0) {
