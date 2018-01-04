@@ -87,6 +87,7 @@ var model = {
                 console.log(table._id);
                 console.log(table._id + "");
                 sails.sockets.join(socketId, 'room'+ table._id , callback);
+              // callback();
             },
             function (callback) {
                 table.save(callback);
@@ -315,7 +316,7 @@ var model = {
                 //     allData.extra = {};
                 // }
                 
-                sails.sockets.broadcast("room" + tableId, "Update", allData);             
+                sails.sockets.broadcast("room" + tableId, "Update", {data: allData});             
             }
         });
     },
