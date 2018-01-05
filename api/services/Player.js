@@ -486,7 +486,7 @@ var model = {
     },
     makeDealer: function (data, callback) {
         var Model = Player;
-
+        console.log("make dealer", data);   
         async.waterfall([
             function (callback) {
                 Player.update({
@@ -528,7 +528,7 @@ var model = {
                                     players[turnIndex].isLastBlind = true;
                                     players[turnIndex].save(callback);
                                 }
-                            }, function (err, data) {
+                            }, function (err, data1) {
                                 Table.blastSocket(data.tableId);
                                 callback(err, data);
                             });
