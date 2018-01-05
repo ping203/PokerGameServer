@@ -228,38 +228,54 @@ var model = {
         }, callback);
 
     },
-    showWinner: function (callback) {
+    showWinner: function (data, callback) {
         async.parallel({
             players: function (callback) {
                 Player.find({
-                    isActive: true,
-                    isFold: false
+                    table: data.tableId
+                    // isActive: true,
+                    // isFold: false
                 }).lean().exec(callback);
             },
             communityCards: function (callback) {
                 CommunityCards.find({
-                    isBurn: false
+                    table: data.tableId
+                    // isBurn: false
                 }).lean().exec(callback);
+            },
+            pots: function (callback) {
+                CommunityCards.Pot({
+                    table: data.tableId
+                    // isBurn: false
+                }).exec(callback);
             }
         }, function (err, data) {
             if (err) {
                 callback(err);
             } else {
-                //Check All Player Cards are Placed
-                CommunityCards.findWinner(data.players, data.communityCards, function (err, finalVal) {
+                Pot.declareWinner(allData, function (err, data) {
                     if (err) {
                         callback(err);
-                    } else {
-                        Player.blastSocketWinner({
-                            winners: data.players,
-                            communityCards: data.communityCards
-                        });
-                        callback(null, {
-                            winners: data.players,
-                            communityCards: data.communityCards
-                        });
+                    }else{
+                        Table.blastSocket(data.tableId);
+                        callback();
                     }
                 });
+                //Check All Player Cards are Placed
+                // CommunityCards.findWinner(data.players, data.communityCards, function (err, finalVal) {
+                //     if (err) {
+                //         callback(err);
+                //     } else {
+                //         Player.blastSocketWinner({
+                //             winners: data.players,
+                //             communityCards: data.communityCards
+                //         });
+                //         callback(null, {
+                //             winners: data.players,
+                //             communityCards: data.communityCards
+                //         });
+                //     }
+                // });
 
             }
         });
@@ -486,7 +502,7 @@ var model = {
     },
     makeDealer: function (data, callback) {
         var Model = Player;
-        console.log("make dealer", data);   
+        console.log("make dealer", data);
         async.waterfall([
             function (callback) {
                 Player.update({
