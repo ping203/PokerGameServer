@@ -6,8 +6,17 @@ var controller = {
     getAllTable: function(req, res){
         Table.getAllTable(req.body, res.callback);
     },
+    removePlayer: function(req, res){
+        Table.removePlayer(req.body, res.callback);
+    },
     testSocket: function(req, res){
-        sails.sockets.broadcast(req.tableId, "Update", "hi.........");
+       // console.log(sails.sockets.rooms());
+        //sails.sockets.subscribers(, cb);
+        // sails.io.sockets.in(req.tableId).clients(function(err,data){
+        //     console.log(err);
+        //     console.log(data);
+        // })
+        sails.sockets.blast( "Update",{name:"mansi"});
     }
 };
 module.exports = _.assign(module.exports, controller);

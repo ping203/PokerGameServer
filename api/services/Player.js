@@ -397,6 +397,9 @@ var model = {
                 Table.findOne({
                     _id: tableId
                 }).exec(callback);
+            },
+            extra: function(callback){  //to have same format required by the frontend
+                  callback(null, {});
             }
         }, callback);
     },
