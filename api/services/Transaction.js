@@ -164,6 +164,14 @@ var model = {
     changeStatus: function (transData, callback) {
 
     },
+    makePotTransaction: function(allData, callback){
+
+
+    },
+    getWinAmount: function(player, pots, callback){
+        var playerNo = player.playerNo;
+
+    },
     tableWonAmount: function (transData, callback) {
         var transData = {};
         var transStatus = "tableWon";

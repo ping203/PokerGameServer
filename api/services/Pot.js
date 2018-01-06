@@ -23,8 +23,8 @@ var schema = new Schema({
         enum: ['main', 'side']
     },
     winner: {
-        type: Schema.Types.ObjectId,
-        ref: 'Player'
+        type: Schema.Types.Mixed,
+        
     }
 });
 
@@ -44,6 +44,32 @@ var model = {
             table: tableId,
             type: 'main'
         }).exec(callback);
+    },
+    declareWinner: function (allData, callback) {
+        async.each(allData.pots, function (p) {
+            var players = _.uniqBy(p.players, "playerNo");
+            var playerNos = _.map(players, "playerNo");
+            var playerData = _.filter(allData.players, function (p, callback) {
+                return _.indexof(playerNos, p.playerNo);
+            });
+            var potPlayers = _.cloneDeep(playerData);
+            CommunityCards.findWinner(potPlayers, allData.communityCards, function (err, finalVal) {
+                if (err) {
+                    callback(err);
+                } else {
+                    p.winner = playerData;
+                    p.save(callback);
+                    // Player.blastSocketWinner({
+                    //     winners: data.players,
+                    //     communityCards: data.communityCards
+                    // });
+                    // callback(null, {
+                    //     winners: data.players,
+                    //     communityCards: data.communityCards
+                    // });
+                }
+            }, callback);
+        });
     },
     //type, tableId, playerNo, amount, round, 
     AddToMainPort: function (data, currentPlayer, callback) {
@@ -90,6 +116,7 @@ var model = {
         _.each(allInPlayer, function (p) {
             allInPlayerAmount.push(Pot.getAmountForPlayer(allData.pots, p.playerNo, round));
         });
+
 
         console.log("allInPlayerAmount", allInPlayerAmount);
         console.log("activePlayers", activePlayers);

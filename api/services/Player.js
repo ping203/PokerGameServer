@@ -74,6 +74,10 @@ var schema = new Schema({
     turn: {
         type: Boolean,
         default: false
+    },
+    socketId: {
+        type: String,
+        required: true
     }
 });
 schema.plugin(deepPopulate, {
