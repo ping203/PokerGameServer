@@ -50,7 +50,11 @@ var schema = new Schema({
     activePlayer: [{
         type: Schema.Types.ObjectId,
         ref: 'Player'
-    }]
+    }],
+    isStraddle:{
+        type: Boolean,
+        default: false
+    }
 });
 
 schema.plugin(deepPopulate, {});
@@ -88,9 +92,9 @@ var model = {
             if (err) {
                 callback(err);
             } else {
- 
-                
-                
+
+
+
                 if (_.isEmpty(result.user) || _.isEmpty(result.player) || _.isEmpty(result.table) || ((result.user._id + "") != (result.player.user))) {
                     callback("Invalide Request");
                     return 0;
@@ -98,12 +102,16 @@ var model = {
 
                 var socketId = result.player.socketId;
 
-               var removedIds =  _.remove(result.table.activePlayer, function (p) {
+                var removedIds = _.remove(result.table.activePlayer, function (p) {
+                    console.log((p + "" == result.player._id + ""));
                     return (p + "" == result.player._id + "");
                 });
-                 
+
                 console.log("removedIds", removedIds);
-                console.log(result.table.activePlayer);
+
+                //result.table.activePlayer = result.table.activePlayer;
+                result.table.markModified('activePlayer');
+                console.log(result.table);
                 async.parallel([
                     function (callback) {
                         result.table.save(callback);
@@ -115,10 +123,11 @@ var model = {
                         sails.sockets.leave(socketId, "room" + result.table._id, callback);
                     }
 
-                ], function(err, result){
-                     Table.blastSocket(data.tableId);
-                     callback(err, result);
-                }); 
+                ], function (err, result) {
+                    Table.blastSocket(data.tableId, {removePlayer: true});
+                    console.log("err", err);
+                    callback(err, result);
+                });
 
 
             }
@@ -153,7 +162,7 @@ var model = {
                 // sails.sockets.subscribers(table._id, function(err, socketId){
                 //        console.log(socketId);
                 // });
-                Table.blastSocket(table._id);
+                Table.blastAddPlayerSocket(table._id);
                 callback(err, player);
             }
         });
@@ -197,6 +206,11 @@ var model = {
                 Player.find({
                     table: data.tableId
                 }).exec(callback);
+            },
+            CommunityCards: function (callback) {
+                CommunityCards.find({
+                    table: data.tableId
+                }).exec(callback);
             }
         }, function (err, result) {
 
@@ -221,7 +235,7 @@ var model = {
                 console.log(playerAdded);
                 if (playerAdded) {
 
-                     playerIndex = _.findIndex(table.activePlayer, function (p) {
+                    playerIndex = _.findIndex(table.activePlayer, function (p) {
                         return (p + "" == playerAdded._id + "");
                     });
                 }
@@ -259,16 +273,18 @@ var model = {
                     if (err) {
                         callback(err);
                     } else {
-                        if (player && player.playerNo == 1) {
+                        if (player && player.playerNo == 1 && _.isEmpty(result.CommunityCards)) {
                             //configuring things for rooms befor starting a game. 
                             // console.log("inside");
                             // sails.sockets.join('Update', data.tableId);
                             // sails.sockets.join('ShowWinner', data.tableId);
-                            async.each([1, 2, 3, 4, 5], function (cardNo, callback) {
+                            async.each([1, 2, 3, 4, 5, 6, 7, 8], function (cardNo, callback) {
                                 var comData = {};
                                 comData.cardNo = cardNo;
                                 comData.table = data.tableId;
-
+                                if (_.includes([1, 5, 7], cardNo)) {
+                                    comData.isBurn = true;
+                                }
                                 CommunityCards.saveData(comData, callback);
 
                             }, function (err, data1) {
@@ -364,8 +380,23 @@ var model = {
         });
     },
 
-    blastSocket: function (tableId, extraData, fromUndo) {
-        console.log(tableId);
+    blastSocketWinner: function (tableId, extraData) {
+
+        // var newWinner = _.filter(data.winners, function (n) {
+        //     return n.winner;
+        // });
+        // var finalWinner = _.map(newWinner, function (n) {
+        //     var obj = {
+        //         cards: n.cards,
+        //         descr: n.descr,
+        //         playerNo: n.playerNo
+        //     };
+        //     return obj;
+        // });
+        // sails.sockets.blast("ShowWinner", {
+        //     data: finalWinner
+        // });
+
         Player.getAllDetails({
             tableId: tableId
         }, function (err, allData) {
@@ -386,7 +417,70 @@ var model = {
                 } else {
                     allData.extra = {};
                 }
+                console.log("Inner blast socket ", tableId);
+                console.log("allData ", allData);
+                sails.sockets.broadcast("room" + tableId, "showWinner", {
+                    data: allData
+                });
+            }
+        });
+    },
+    blastAddPlayerSocket: function (tableId, extraData) {
+        Player.getAllDetails({
+            tableId: tableId
+        }, function (err, allData) {
+            // if (!fromUndo) {
+            //     GameLogs.create(function () {});
+            // } else {
+            //     allData.undo = true;
+            // }
+            // if (data && data.newGame) {
+            //     allData.newGame = true;
+            // }
 
+            if (err) {
+                console.log(err);
+            } else {
+                if (extraData) {
+                    allData.extra = extraData;
+                } else {
+                    allData.extra = {};
+                }
+                //console.log(allData);
+                sails.sockets.blast("seatSelection", {
+                    data: allData
+                });
+                // sails.sockets.broadcast("room" + tableId, "Update", {
+                //     data: allData
+                // });
+            }
+        });
+    },
+
+    blastSocket: function (tableId, extraData, fromUndo) {
+        console.log(tableId);
+        console.log("inside blastSocket", extraData);
+        Player.getAllDetails({
+            tableId: tableId
+        }, function (err, allData) {
+            // if (!fromUndo) {
+            //     GameLogs.create(function () {});
+            // } else {
+            //     allData.undo = true;
+            // }
+            // if (data && data.newGame) {
+            //     allData.newGame = true;
+            // }
+
+            if (err) {
+                console.log(err);
+            } else {
+                if (!_.isEmpty(extraData)) {
+                    allData.extra = extraData;
+                } else {
+                    allData.extra = {};
+                }
+                console.log("allData.extra", allData.extra);
                 sails.sockets.broadcast("room" + tableId, "Update", {
                     data: allData
                 });
@@ -416,6 +510,7 @@ var model = {
 
     },
     updateStatus: function (tableId, callback) {
+        console.log("updateStatus ", tableId);
         var status = [
             'beforeStart',
             'serve',
@@ -424,7 +519,7 @@ var model = {
             'Turn',
             'River',
             'winner'
-        ]
+        ];
         Table.findOne({
             _id: tableId
         }).exec(function (err, data) {
@@ -435,9 +530,15 @@ var model = {
             if (index >= 0) {
                 data.status = status[index + 1];
             }
-
-            data.save(callback);
-
+            async.parallel([function (callback) {
+                data.save(callback);
+            }, function (callback) {
+                if (status[index + 1] == "winner") {
+                    Player.showWinner({tableId: tableId} , callback)
+                } else {
+                    callback(null);
+                }
+            }], callback);
         });
     }
 

@@ -97,7 +97,7 @@ var model = {
         });
     },
     flush: function (callback) {
-        GameLogs.collection.drop(callback);
+        GameLogs.remove({},callback);
     }
 };
 module.exports = _.assign(module.exports, exports, model);

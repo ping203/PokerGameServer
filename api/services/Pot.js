@@ -24,7 +24,7 @@ var schema = new Schema({
     },
     winner: {
         type: Schema.Types.Mixed,
-        
+
     }
 });
 
@@ -46,18 +46,28 @@ var model = {
         }).exec(callback);
     },
     declareWinner: function (allData, callback) {
-        async.each(allData.pots, function (p) {
+        async.concat(allData.pots, function (p, callback) {
             var players = _.uniqBy(p.players, "playerNo");
+            console.log("players", players);
             var playerNos = _.map(players, "playerNo");
-            var playerData = _.filter(allData.players, function (p, callback) {
-                return _.indexof(playerNos, p.playerNo);
+            console.log("playerNos ", playerNos);
+            // remove players not in pot and fold
+            var playerData = _.filter(allData.players, function (p) {
+                console.log("p.playerNo", p.playerNo, _.indexOf(playerNos, p.playerNo));
+                if (_.indexOf(playerNos, p.playerNo) == -1) {
+                    return false;
+                } else {
+                    return true;
+                };
             });
+            console.log("playerData ", playerData);
             var potPlayers = _.cloneDeep(playerData);
             CommunityCards.findWinner(potPlayers, allData.communityCards, function (err, finalVal) {
                 if (err) {
                     callback(err);
                 } else {
-                    p.winner = playerData;
+                    console.log(potPlayers);
+                    p.winner = potPlayers;
                     p.save(callback);
                     // Player.blastSocketWinner({
                     //     winners: data.players,
@@ -68,7 +78,15 @@ var model = {
                     //     communityCards: data.communityCards
                     // });
                 }
-            }, callback);
+            });
+        }, function (err, data) {
+            if (err) {
+                callback(err);
+            } else {
+                console.log("concat data", data);
+                allData.pots = data;
+                Transaction.makePotTransaction(allData, callback);
+            }
         });
     },
     //type, tableId, playerNo, amount, round, 
@@ -167,12 +185,17 @@ var model = {
         var tableInfo = allData.table;
         var PlayersInfo = allData.players;
         var potsInfo = allData.pots;
-
+        console.log(allData);
         //current Player
         var currentPlayer = _.find(PlayersInfo, function (p) {
             return p.isTurn;
         });
-        console.log("currentPlayer", currentPlayer.playerNo);
+
+        if (!currentPlayer) {
+            callback("No one has turn");
+            return 0;
+        }
+        console.log("currentPlayer", currentPlayer);
         console.log("potsInfo length", potsInfo.length);
         //round of table 
         var status = tableInfo.status;
@@ -196,15 +219,16 @@ var model = {
             console.log("potMaxLimit1", potMaxLimit);
             // for new round take maximum amount from previous round
             if (!potMaxLimit) {
-                var prvstatus = Table.getPrvStatus(status);
-                potMaxLimit = _.max(_.map(pot.players, function (p) {
-                    if (p.round == prvstatus) {
-                        return p.amount;
-                    }
-                }));
+                // var prvstatus = Table.getPrvStatus(status);
+                // potMaxLimit = _.max(_.map(pot.players, function (p) {
+                //     if (p.round == prvstatus) {
+                //         return p.amount;
+                //     }
+                // }));
+                potMaxLimit = 0;
             }
 
-            console.log("potMaxLimit2", potMaxLimit);
+            //  console.log("potMaxLimit2", potMaxLimit);
             //finding current player to abstract amount already paid
             var playerAmt = _.find(pot.players, function (p) {
                 return (currentPlayer.playerNo == p.playerNo && p.round == status);
@@ -265,6 +289,7 @@ var model = {
         console.log("playerBalances", playerBalances);
         if (playerBalances[1] < currentPlayerBalance) {
             var allInAmount = playerBalances[1];
+            allInAmount -= paidAmt;
         } else {
             var allInAmount = currentPlayerBalance;
         }
@@ -396,6 +421,10 @@ var model = {
             },
             Pot.solveInfo
         ], function (err, data) {
+            if (err) {
+                callback(err);
+                return 0;
+            }
             switch (action) {
                 case 'call':
                     data.amountTobeAdded = data.callAmount;

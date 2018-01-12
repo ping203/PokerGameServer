@@ -32,7 +32,7 @@ var model = {
         if (data.page) {
             page = data.page
         }
-       console.log(data);
+        console.log(data);
         var skipRecords = page * pagination;
         User.findOne({
             accessToken: data.accessToken
@@ -41,17 +41,19 @@ var model = {
                 callback(err);
             } else {
                 if (!_.isEmpty(data)) {
-                    
+
                     var options = {
-                       
-                        
-                        start: page  * pagination,
+
+
+                        start: page * pagination,
                         count: pagination
                     };
 
-                     Model.find({
-                         userId: data._id
-                     }).sort({_id:-1}).page(options, callback);
+                    Model.find({
+                        userId: data._id
+                    }).sort({
+                        _id: -1
+                    }).page(options, callback);
                     // Model.find({
                     //             userId: data._id
                     //         }
@@ -74,7 +76,7 @@ var model = {
                     //             callback(err, data);
                     //         }
                     //     });
-                }else{
+                } else {
                     callback("Please login first.");
                 }
             }
@@ -139,7 +141,7 @@ var model = {
 
                 var finalAmount = parseInt(data.balance) - parseInt(transAmt);
                 //save transaction                
-                transData.userId = data._id
+                transData.userId = data._id;
                 transData.amount = transAmt;
                 transData.balance = finalAmount;
                 //change balance of user
@@ -164,31 +166,61 @@ var model = {
     changeStatus: function (transData, callback) {
 
     },
-    makePotTransaction: function(allData, callback){
+    makePotTransaction: function (allData, callback) {
+        async.each(allData.players,
 
+            function (player, callback) {
+                var winAmount = 0;
+                _.each(allData.pots, function (pot) {
+                    var winners = _.filter(pot.winner, function (w) {
+                        return w.winner
+                    });
+                    _.each(winners, function (w) {
+
+                        if (w.playerNo == player.playerNo && w.winner) {
+                            winAmount += pot.totalAmount / winners.length;
+                        }
+                    });
+                });
+
+                if (winAmount >= player.totalAmount) {
+                    player.totalAmount = winAmount - player.totalAmount;
+                    Transaction.tableWonAmount(player, callback);
+                } else {
+                    player.totalAmount = player.totalAmount - winAmount;
+                    Transaction.tableLostAmount(player, callback);
+                }
+
+            }, callback);
 
     },
-    getWinAmount: function(player, pots, callback){
+    getWinAmount: function (player, pots, callback) {
         var playerNo = player.playerNo;
 
+
+
+
     },
-    tableWonAmount: function (transData, callback) {
+    tableWonAmount: function (data, callback) {
         var transData = {};
         var transStatus = "tableWon";
         var transAmt;
-        var accessToken = data.accessToken;
+        transData.amount = data.totalAmount;
+        transData.status = "tableWon";
+        // var accessToken = data.accessToken;
         if (parseInt(transAmt) == NaN) {
             callback("Enter Valid Amount");
         }
-        user.findOne({
-            accessToken: accessToken
-        }).exec(function (err, data) {
+        User.findOne({
+            _id: data.user
+        }).exec(function (err, userData) {
 
-            if (!_.isEmpty(data)) {
+            if (!_.isEmpty(userData)) {
+                Transaction.balance = userData.balance;
                 async.parallel({
                     transaction: function (callback) {
                         transData.userId = userData._id;
-                        if (transData._id) {
+                        if (!transData._id) {
                             Transaction.saveData(transData, function (err, data) {
                                 callback(err, data);
                             });
@@ -204,9 +236,9 @@ var model = {
                         }
                     },
                     balance: function (callback) {
-                        var finalAmount = parseInt(data.amount) + parseInt(transAmt);
-                        data.balance = finalAmount;
-                        data.save(function (err, data) {
+                        var finalAmount = parseInt(userData.balance) + parseInt(data.totalAmount);
+                        userData.balance = finalAmount;
+                        userData.save(function (err, data) {
                             callback(err, data);
                         });
                     }
@@ -226,26 +258,26 @@ var model = {
     },
     tableLostAmount: function (data, callback) {
         var transData = {};
-        //transData.transStatus = "tableLost";
-        var transAmt = data.coins;
-        transData.amount = transAmt;
-        var accessToken = data.accessToken;
-        if (parseInt(transAmt) == NaN) {
-            callback("Enter Valid Amount");
-        }
-        transData.amount = coinData.coins;
-        if (!_.isEmpty(data.transId)) {
-            transData._id = data.transId;
-        }
-        user.findOne({
-            accessToken: accessToken
+        transData.status = "tableLost";
+        // var transAmt = data.amount;
+        transData.amount = data.totalAmount;
+        //var accessToken = data.accessToken;
+        // if (parseInt(transAmt) == NaN) {
+        //     callback("Enter Valid Amount");
+        // }
+        //transData.amount = coinData.coins;
+        // if (!_.isEmpty(data.transId)) {
+        //     transData._id = data.transId;
+        // }
+        User.findOne({
+            _id: data.user
         }).exec(function (err, userData) {
-
-            if (!_.isEmpty(data)) {
+            Transaction.balance = userData.balance;
+            if (!_.isEmpty(userData)) {
                 async.parallel({
                     transaction: function (callback) {
                         transData.userId = userData._id;
-                        if (transData._id) {
+                        if (!transData._id) {
                             Transaction.saveData(transData, function (err, data) {
                                 callback(err, data);
                             });
@@ -255,15 +287,15 @@ var model = {
                                 _id: data.transId
                             }, {
                                 $inc: {
-                                    amount: transAmt
+                                    amount: data.totalAmount
                                 }
                             });
                         }
                     },
                     balance: function (callback) {
-                        var finalAmount = parseInt(data.amount) - parseInt(transAmt);
-                        data.balance = finalAmount;
-                        data.save(function (err, data) {
+                        var finalAmount = parseInt(userData.balance) - parseInt(data.totalAmount);
+                        userData.balance = finalAmount;
+                        userData.save(function (err, data) {
                             callback(err, data);
                         });
                     }

@@ -71,13 +71,13 @@ var schema = new Schema({
         type: Number,
         default: 0
     },
-    turn: {
-        type: Boolean,
-        default: false
-    },
     socketId: {
         type: String,
         required: true
+    },
+    hasRaised: {
+        type: Boolean,
+        default: false
     }
 });
 schema.plugin(deepPopulate, {
@@ -233,35 +233,41 @@ var model = {
 
     },
     showWinner: function (data, callback) {
+        console.log("inside showwinner");
+        console.log(data);
+        var tableId = data.tableId;
         async.parallel({
             players: function (callback) {
                 Player.find({
-                    table: data.tableId
-                    // isActive: true,
-                    // isFold: false
+                    table: data.tableId,
+                    isActive: true,
+                    isFold: false
                 }).lean().exec(callback);
             },
             communityCards: function (callback) {
                 CommunityCards.find({
-                    table: data.tableId
-                    // isBurn: false
+                    table: data.tableId,
+                    isBurn: false,
+                    cardValue: {
+                        $nin: ["", " ", null]
+                    }
                 }).lean().exec(callback);
             },
             pots: function (callback) {
-                CommunityCards.Pot({
+                Pot.find({
                     table: data.tableId
-                    // isBurn: false
                 }).exec(callback);
             }
         }, function (err, data) {
             if (err) {
                 callback(err);
             } else {
-                Pot.declareWinner(allData, function (err, data) {
+                console.log("data", data);
+                Pot.declareWinner(data, function (err, data1) {
                     if (err) {
                         callback(err);
-                    }else{
-                        Table.blastSocket(data.tableId);
+                    } else {
+                        Table.blastSocketWinner(tableId);
                         callback();
                     }
                 });
@@ -372,8 +378,6 @@ var model = {
                 }
             }
         });
-
-
     },
     getAllDetails: function (data, callback) {
         var tableId = data.tableId;
@@ -398,10 +402,64 @@ var model = {
                     _id: tableId
                 }).exec(callback);
             },
-            extra: function(callback){  //to have same format required by the frontend
-                  callback(null, {});
+            extra: function (callback) { //to have same format required by the frontend
+                callback(null, {});
             }
-        }, callback);
+        }, function (err, allData) {
+            if (err) {
+                callback(err);
+            } else {
+                Pot.solveInfo(allData, function (err, data) {
+                    console.log("inside allData");
+                    if (err) {
+                        console.log("inside allData err", err);
+                        callback(null, allData);
+                    } else {
+                        if (!_.isEmpty(data.currentPlayer)) {
+                            //enable or disable buttons depending on conditions
+                            var totalRoundAmount = 0;
+                            var remainingBalance = data.currentPlayer.buyInAmt - data.currentPlayer.totalAmount;
+                            allData.isChecked = false;
+                            allData.isCalled = false;
+                            allData.isRaised = false;
+                            allData.fromRaised = 0;
+                            allData.toRaised = 0;
+                            if (data.callAmount <= 0) {
+                                allData.isChecked = true;
+                            }
+
+                            _.each(data.pots, function (p) {
+                                totalRoundAmount += p.potMaxLimit;
+                            });
+
+                            allData.fromRaised = totalRoundAmount + 100;
+
+                            if (remainingBalance >= allData.fromRaised) {
+                                allData.isRaised = true;
+                            }
+
+                            console.log("remainingBalance", remainingBalance);
+                            console.log("data.payableAmt", data.payableAmt);
+                            if (remainingBalance >= data.callAmount && !allData.isChecked) {
+                                allData.isCalled = true;
+                            }
+
+                            allData.toRaised = remainingBalance;
+
+                            delete allData.tableStatus;
+                            delete allData.currentPlayer;
+                            delete allData.callAmount;
+                            delete allData.allInAmount;
+                            callback(null, allData);
+                        } else {
+                            callback(null, allData);
+                        }
+                    }
+
+                });
+            }
+            //send isckecked and raise amount( from to end)   
+        });
     },
     newGame: function (data, callback) {
         var Model = this;
@@ -412,39 +470,40 @@ var model = {
                     callback(err);
                 });
             },
-            function (callback) { // Next Dealer
-                Model.find({
-                    table: tableId,
-                    isActive: true
-                }).exec(function (err, players) {
-                    if (err) {
-                        callback(err);
-                    } else {
-                        var turnIndex = _.findIndex(players, function (n) {
-                            return n.isDealer;
-                        });
-                        if (turnIndex >= 0) {
-                            async.parallel({
-                                removeDealer: function (callback) {
-                                    var player = players[turnIndex];
-                                    player.isDealer = false;
-                                    player.save(callback);
-                                },
-                                addDealer: function (callback) {
-                                    var newTurnIndex = (turnIndex + 1) % players.length;
-                                    var player = players[newTurnIndex];
-                                    player.isDealer = true;
-                                    player.save(callback);
-                                }
-                            }, function (err, data) {
-                                callback();
-                            });
-                        } else {
-                            callback("No Element Remaining");
-                        }
-                    }
-                });
-            },
+            // function (callback) { // Next Dealer
+            //     Model.find({
+            //         table: tableId,
+            //         isActive: true
+            //     }).exec(function (err, players) {
+            //         if (err) {
+            //             callback(err);
+            //         } else {
+            //             var turnIndex = _.findIndex(players, function (n) {
+            //                 return n.isDealer;
+            //             });
+            //             callback();
+            //             // if (turnIndex >= 0) {
+            //             //     async.parallel({
+            //             //         removeDealer: function (callback) {
+            //             //             var player = players[turnIndex];
+            //             //             player.isDealer = false;
+            //             //             player.save(callback);
+            //             //         },
+            //             //         addDealer: function (callback) {
+            //             //             var newTurnIndex = (turnIndex + 1) % players.length;
+            //             //             var player = players[newTurnIndex];
+            //             //             player.isDealer = true;
+            //             //             player.save(callback);
+            //             //         }
+            //             //     }, function (err, data) {
+            //             //         callback();
+            //             //     });
+            //             // } else {
+            //             //     callback("No Element Remaining");
+            //             // }
+            //         }
+            //     });
+            // },
             function (fwCallback) {
                 Model.update({
                     table: tableId
@@ -489,19 +548,32 @@ var model = {
             function (arg1, callback) {
                 Pot.remove({
                     table: tableId
-                }, callback)
+                }, function (err, data) {
+                    console.log("err", err);
+                    callback(err, data)
+                })
             },
             function (arg1, callback) {
                 Table.update({
                     _id: tableId
                 }, {
                     status: "beforeStart",
-                }).exec(callback);
-            }
+                  //  activePlayer: []
+                }).exec(function (err, data) {
+                    console.log("err", err);
+                    callback(err, data);
+                });
+            },
+            // function (arg1, callback) {
+            //     Player.remove({
+            //         table: tableId
+            //     }, callback);
+            // }
         ], function (err, cumCards) {
             Table.blastSocket(tableId, {
                 newGame: true
             });
+            console.log("final, err");
             callback(err, cumCards);
         });
         readLastValue = "";
@@ -685,6 +757,11 @@ var model = {
                                 CommunityCards.find({
                                     table: tableId
                                 }).exec(callback);
+                            },
+                            table: function (callback) {
+                                Table.find({
+                                    _id: tableId
+                                }).exec(callback);
                             }
                         }, function (err, response) {
                             console.log(response);
@@ -745,7 +822,7 @@ var model = {
                                     } else {
                                         callback(err, "Card Provided to Player " + response.players[toServe].playerNo);
                                         if (playerCards.length + 1 == (playerCount * maxCardsPerPlayer)) {
-
+                                            console.log("Last Card Served");
 
                                             //table.status = 'preFlop';
                                             async.parallel([
@@ -767,10 +844,16 @@ var model = {
                                                 //     });
                                                 // }
                                             ], function (err, data) {
+                                                console.log("blast the socket");
+                                                console.log("extra data", {
+                                                    player: true,
+                                                    value: response.players[toServe].playerNo
+                                                });
                                                 Table.blastSocket(tableId, {
                                                     player: true,
                                                     value: response.players[toServe].playerNo
                                                 });
+                                                //  callback(err, data);
                                             });
                                             // Player.makeTurn("LastPlayerCard", function (err, data) {
                                             //     Player.blastSocket({
@@ -804,7 +887,7 @@ var model = {
                                     if (err) {
                                         callback(err);
                                     } else {
-                                        communityCardCount++;
+                                        //communityCardCount++;
                                         callback(err, "Card Provided to Community Card No " + (communityCardCount));
 
                                         if (communityCardCount == 3 || communityCardCount == 5 || communityCardCount == 7) {
@@ -975,7 +1058,7 @@ var model = {
                                 addTurn: function (callback) {
                                     var newTurnIndex = (turnIndex + 1) % players.length;
                                     var player = players[newTurnIndex];
-                                    player.turn = true;
+                                    // player.turn = true;
                                     player.isTurn = true;
                                     player.save(callback);
                                 }
@@ -1011,7 +1094,9 @@ var model = {
                             }, {
                                 $set: {
                                     hasRaised: false,
-                                    isTurn: false
+                                    isTurn: false,
+                                    hasChecked: false,
+                                    hasCalled: false
                                 }
                             }, {
                                 multi: true
@@ -1021,25 +1106,53 @@ var model = {
                         },
                         function (callback) { // There is an MAIN Error where there is no dealer or No isLastBlind
                             if (cardNo == "LastPlayerCard") {
-                                async.waterfall([
-                                    function (callback) {
-                                        CommunityCards.closeServe(tableId, function (err, data) {
-                                            callback(err, {
-                                                table: tableId,
-                                                type: 'main'
-                                            });
-                                        });
-                                    },
+                                Table.find({
+                                    _id: tableId
+                                }, function (err, table) {
+                                    if (err) {
+                                        callback(err);
+                                    } else {
+                                        async.waterfall([
+                                            function (callback) {
+                                                CommunityCards.closeServe(tableId, function (err, data) {
+                                                    callback(err, {
+                                                        table: tableId,
+                                                        type: 'main'
+                                                    });
+                                                });
+                                            },
 
-                                    Pot.createPot,
-                                    //Player.findLastBlindNext(tableId, callback);
-                                    Player.findDealerNext,
-                                    Player.makeSmallBlind,
-                                    Player.nextInPlay,
-                                    Player.makeBigBlind,
-                                    Player.nextInPlay
+                                            Pot.createPot,
+                                            //Player.findLastBlindNext(tableId, callback);
+                                            Player.findDealerNext,
+                                            Player.makeSmallBlind,
+                                            Player.nextInPlay,
+                                            Player.makeBigBlind,
+                                            Player.nextInPlay,
+                                            function (player, callback) {
+                                                console.log("table.isStraddle", table.isStraddle);
+                                                if (table.isStraddle) {
+                                                    var pot = {};
+                                                    pot.round = 'preFlop',
+                                                        pot.amount = table.bigBlind * 2;
+                                                    pot.playerNo = player.playerNo;
+                                                    pot.tableId = player.table;
+                                                    pot.type = 'main';
+                                                    Pot.AddToMainPort(pot, player, function (err, data) {
+                                                        if (err) {
+                                                            callback(err);
+                                                        } else {
+                                                            Player.nextInPlay(player, callback);
+                                                        }
+                                                    });
+                                                } else {
+                                                    callback(null, player);
+                                                }
+                                            }
+                                        ], callback);
+                                    }
+                                });
 
-                                ], callback);
                             } else {
                                 async.waterfall(
                                     [
@@ -1073,6 +1186,7 @@ var model = {
                         },
                         function (player, callback) { // Enable turn from the same
                             // player.turn = true;
+                            console.log("player...........", player);
                             player.isTurn = true;
                             player.save(callback);
                         }
@@ -1087,7 +1201,8 @@ var model = {
     },
     raise: function (data, callback) {
         var tableId = data.tableId;
-        Player.getPlayer(data, function (err, data) {
+        console.log("tableId", tableId);
+        Player.getPlayer(data, function (err, data1) {
             if (err) {
                 callback(err);
             } else {
@@ -1114,7 +1229,8 @@ var model = {
                         player.hasRaised = true;
                         player.hasRaisedd = true;
                         player.save(function (err, data) {
-                            callback(err, tableId);
+
+                            callback(err, data);
                         });
                     },
                     function (player, callback) {
@@ -1143,7 +1259,8 @@ var model = {
                             $set: {
                                 hasCalled: false,
                                 hasChecked: false,
-                                hasRaisedd: false
+                                hasRaisedd: false,
+                                hasRaised: false
                             }
                         }, {
                             multi: true
@@ -1153,7 +1270,15 @@ var model = {
                     },
                     Player.currentTurn,
                     function (player, callback) {
-                        // console.log("inside solvepot");
+                        player.hasCalled = true;
+                        player.save(function(err, data){
+                            Table.blastSocket(tableId);
+                            callback(err, data);
+                        });
+                    },
+                    function (player, callback) {
+                        console.log("player", player);
+                        console.log("inside callback check", callback);
                         Pot.solvePot(player, 'call', 0, function (err, data) {
                             callback(err);
                         });
@@ -1190,7 +1315,7 @@ var model = {
             }
         }, callback);
     },
-    check: function (callback) {
+    check: function (data, callback) {
         var tableId = data.tableId;
         Player.getPlayer(data, function (err, data) {
             if (err) {
@@ -1204,7 +1329,8 @@ var model = {
                             $set: {
                                 hasCalled: false,
                                 hasChecked: false,
-                                hasRaisedd: false
+                                hasRaisedd: false,
+                                hasRaised: false,
                             }
                         }, {
                             multi: true
@@ -1216,6 +1342,7 @@ var model = {
                     function (player, callback) {
                         player.hasChecked = true;
                         player.save(function (err, data) {
+                           // Table.blastSocket(tableId);
                             callback(err, tableId);
                         });
                     },
@@ -1227,6 +1354,7 @@ var model = {
     fold: function (data, callback) {
         var tableId = data.tableId;
         Player.getPlayer(data, function (err, data) {
+            console.log("data in", data);
             if (err) {
                 callback(err);
             } else {
@@ -1248,26 +1376,42 @@ var model = {
                     },
                     Player.currentTurn,
                     function (player, callback) {
+                        console.log("after current turn");
                         player.isFold = true;
                         player.save(function (err, data) {
-                            callback(err, tableId);
+                            callback(err, data);
                         });
                     },
-                    function (callback) {
+                    function (Player, callback) {
+                        console.log("make transaction");
+                        Transaction.tableLostAmount(Player, callback);
+                    },
+                    function (arg1, callback) {
+                        console.log("last callback");
                         Player.find({
                             isFold: false,
                             isActive: true,
-                            table: tableId
+                            table: tableId,
+                            isAllIn: false
                         }).exec(function (err, data) {
                             if (err) {
                                 callback(err);
                             } else {
                                 if (data.length == 1) {
-                                    data[0].winner = true;
-                                    Player.blastSocketWinner({
-                                        winners: data
+                                    Player.showWinner({
+                                        tableId: tableId
+                                    }, function (err, data) {
+                                        if (err) {
+                                            callback(err);
+                                        } else {
+                                            callback(null, tableId);
+                                        }
                                     });
-                                    callback(null, tableId);
+                                    // data[0].winner = true;
+                                    // Player.blastSocketWinner({
+                                    //     winners: data
+                                    // });
+
                                 } else {
                                     callback(null, tableId);
                                 }
@@ -1275,8 +1419,20 @@ var model = {
 
                         });
                     },
+
                     Player.changeTurn
-                ], callback);
+                ], function (err, data) {
+                    console.log("final function");
+                    if (err) {
+                        console.log(err);
+                        callback(err);
+                    } else {
+                        console.log("err", err);
+                        console.log("data", data);
+                        Table.blastSocket(tableId);
+                        callback(err, data);
+                    }
+                });
             }
         });
     },
@@ -1329,11 +1485,15 @@ var model = {
                     return !p.hasTurnCompleted && !p.isFold && !p.isAllIn
                 });
 
+                var playingPlayers = _.filter(allPlayers, function (p) {
+                    return !p.isAllIn && !p.isFold && p.isActive
+                });
 
 
                 var allTurnDone = false;
                 var removeAllTurn = false;
                 var isWinner = false;
+                var declareWinner = false;
 
                 console.log("allTurnDoneIndex ", allTurnDoneIndex);
                 if (allTurnDoneIndex < 0) {
@@ -1349,6 +1509,13 @@ var model = {
                     removeAllTurn = true;
                 }
 
+                if (playingPlayers.length < 1) {
+                    declareWinner = true;
+                }
+
+                if (declareWinner) {
+                    removeAllTurn = true;
+                }
                 // case 1 
                 // When fromPlayer.isLastBlind checks
                 // if (fromPlayer.isLastBlind) {
@@ -1413,16 +1580,23 @@ var model = {
                                     hasRaised: false,
                                     isLastBlind: false,
                                     isTurn: false,
-                                    hasCalled: false,
-                                    hasChecked: false,
+                                   // hasCalled: false,
+                                    //hasChecked: false,
                                     hasRaisedd: false,
-                                    whetherToEndTurn: false
+                                    hasTurnCompleted: false
                                 }
                             }, {
                                 multi: true
                             }, function (err) {
                                 callback(err);
                             });
+                        },
+                        declareWinner: function (callback) {
+                            if (declareWinner) {
+                                Player.showWinner(tableId, callback);
+                            } else {
+                                callback(null);
+                            }
                         }
                     }, function (err, data) {
                         callback(err);
