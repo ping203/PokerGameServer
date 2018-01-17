@@ -124,11 +124,11 @@ var model = {
         var amountRemaining = false;
         var round = allData.table['status'];
         var activePlayers = _.filter(allData.players, function (p) {
-            return !p.isAllIn && p.isActive && !p.fold
+            return !p.isAllIn && p.isActive && !p.isFold
         });
 
         var allInPlayer = _.filter(allData.players, function (p) {
-            return p.isAllIn && !p.fold
+            return p.isAllIn && !p.isFold
         });
 
         _.each(allInPlayer, function (p) {
@@ -314,41 +314,117 @@ var model = {
             var deductAmt = 0;
             var payAmt = item.payableAmt;
             console.log("payAmt", payAmt);
-            // player = _.find(item.players, function (p) {
-            //     return data.currentPlayer.playerNo = p.playerNo && p.round == data.tableStatus;
-            // });
-
-            // if (player) {
-            //     deductAmt = player.amount;
-            // }
-            // payAmt = item.potMaxLimit - deductAmt; //substract already paid amount
-            if (payAmt > amountTobeAdded) {
-                console.log("splitPot");
-                var splitPotAmount = amountTobeAdded + item.paidAmtPerPot;
-                console.log("splitPotAmount", splitPotAmount);
-                Pot.splitPot(item, data.tableStatus, data.currentPlayer, splitPotAmount, function (err, data1) {
-                    var sendData = {
-                        playerNo: data.currentPlayer.playerNo,
-                        amount: amountTobeAdded,
-                        round: data.tableStatus,
-                        potId: item._id
-                    }
-                    Pot.makeEntryAddAmount(sendData, data.currentPlayer, callback);
+            ///////////////////////////////////
+            // handle if someone has done allIn before with lesser amount
+            //   amountTobeAdded = amountTobeAdded - payAmt;
+            var allInPlayerAmt = [];
+            var players = [];
+            var paidAllInAmt = 0;
+            var minAllInAmt = 0;
+            var allInPlayer = _.filter(data.players, function (p) {
+                return p.isActive && !p.isFold && p.isAllIn && p.playerNo != data.currentPlayer.playerNo
+            });
+            console.log("allInPlayer...........", allInPlayer);
+            _.each(allInPlayer, function (ap) {
+                paidAllInAmt = 0;
+                players = _.filter(item.players, function (p) {
+                    return (p.playerNo == ap.playerNo);
                 });
+
+                paidAllInAmt = _.sumBy(players, 'amount');
+                allInPlayerAmt.push(paidAllInAmt)
+            });
+
+            var minAllInAmt = _.min(allInPlayerAmt);
+
+            console.log("minAllInAmt...........", minAllInAmt);
+            // if(minAllInAmt && minAllInAmt < payAmt ){
+
+            // } else {
+            ////////
+            // }
+
+
+
+
+            /////////////////////////////////
+            //add all the remaining money if is greater than payable money
+            if (key == (pots.length - 1) && amountTobeAdded > payAmt) {
+                payAmt = amountTobeAdded; 
+            }
+
+            if (amountTobeAdded == 0) {
+                callback(null);
             } else {
+                // player = _.find(item.players, function (p) {
+                //     return data.currentPlayer.playerNo = p.playerNo && p.round == data.tableStatus;
+                // });
 
-                if (key == (pots.length - 1)) {
-                    payAmt = amountTobeAdded; //add all the remaining money
+                // if (player) {
+                //     deductAmt = player.amount;
+                // }
+                // payAmt = item.potMaxLimit - deductAmt; //substract already paid amount
+                //case 1 , when amount to be added is less than pot max limit
+                if (payAmt > amountTobeAdded) {
+                    console.log("case 1 , when amount to be added is less than pot max limit");
+                    console.log("splitPot");
+                    var splitPotAmount = amountTobeAdded + item.paidAmtPerPot;
+                    console.log("splitPotAmount", splitPotAmount);
+                    Pot.splitPot(item, data.tableStatus, data.currentPlayer, splitPotAmount, function (err, data1) {
+                        var sendData = {
+                            playerNo: data.currentPlayer.playerNo,
+                            amount: amountTobeAdded,
+                            round: data.tableStatus,
+                            potId: item._id
+                        }
+                        Pot.makeEntryAddAmount(sendData, data.currentPlayer, callback);
+                        amountTobeAdded = 0;
+                    });
+                } else if (minAllInAmt && minAllInAmt < amountTobeAdded) {
+                    console.log("case 2 when amount to be addded is greater than allIn added amount  ");
+                    //case 2 when amount to be addded is greater than allIn added amount  
+                    var splitPotAmount = minAllInAmt;
+                    var AddToExistsPot = minAllInAmt - item.paidAmtPerPot;
+                    amountTobeAdded = amountTobeAdded - minAllInAmt + item.paidAmtPerPot;
+                    Pot.splitPot(item, data.tableStatus, data.currentPlayer, splitPotAmount, function (err, newPot) {
+                        if (err) {
+                            callback(err);
+                        } else {
+
+                            async.waterfall([function (callback) {
+                                var sendData = {
+                                    playerNo: data.currentPlayer.playerNo,
+                                    amount: amountTobeAdded,
+                                    round: data.tableStatus,
+                                    potId: newPot._id
+                                }
+                                Pot.makeEntryAddAmount(sendData, data.currentPlayer, function () {
+                                    callback(err);
+                                });
+                            }, function (callback) {
+                                var sendData = {
+                                    playerNo: data.currentPlayer.playerNo,
+                                    amount: AddToExistsPot,
+                                    round: data.tableStatus,
+                                    potId: item._id
+                                }
+                                Pot.makeEntryAddAmount(sendData, data.currentPlayer, callback);
+                            }], callback);
+
+                        }
+                    });
+
+                } else {
+                    //case 3 when amount to be added is equal to max pot limit
+                    console.log("case 3 when amount to be added is equal to max pot limit");
+                    amountTobeAdded = amountTobeAdded - payAmt;
+                    var sendData = {};
+                    sendData.amount = payAmt;
+                    sendData.round = data.tableStatus;
+                    sendData.potId = item._id;
+                    sendData.playerNo = data.currentPlayer.playerNo;
+                    Pot.makeEntryAddAmount(sendData, data.currentPlayer, callback);
                 }
-
-                amountTobeAdded = amountTobeAdded - payAmt;
-
-                var sendData = {};
-                sendData.amount = payAmt;
-                sendData.round = data.tableStatus;
-                sendData.potId = item._id;
-                sendData.playerNo = data.currentPlayer.playerNo;
-                Pot.makeEntryAddAmount(sendData, data.currentPlayer, callback);
             }
         }, callback);
     },
@@ -407,7 +483,9 @@ var model = {
                             callback(null);
                         }
                     }
-                }, callback);
+                }, function (err, data) {
+                    callback(err, newPot);
+                });
             }
         });
     },
