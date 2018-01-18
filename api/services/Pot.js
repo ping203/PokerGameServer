@@ -10,13 +10,11 @@ var schema = new Schema({
     players: [{
         playerNo: {
             type: Number,
-            ref: 'Player'
         },
         amount: {
             type: Number,
             default: 0
-        },
-        round: String
+        }
     }],
     type: {
         type: String,
@@ -24,7 +22,6 @@ var schema = new Schema({
     },
     winner: {
         type: Schema.Types.Mixed,
-
     }
 });
 
@@ -105,7 +102,7 @@ var model = {
         console.log("round", round);
         _.each(potsInfo, function (pot) {
             var playerAmt = _.find(pot.players, function (p) {
-                return (playerNo == p.playerNo && p.round == round);
+                return (playerNo == p.playerNo);
             });
 
             console.log("getAmountForPlayer playerAmt", playerAmt);
@@ -128,22 +125,23 @@ var model = {
         });
 
         var allInPlayer = _.filter(allData.players, function (p) {
-            return p.isAllIn && !p.isFold
+            return p.isAllIn && !p.isFold && p.isActive
         });
 
-        _.each(allInPlayer, function (p) {
-            allInPlayerAmount.push(Pot.getAmountForPlayer(allData.pots, p.playerNo, round));
-        });
+        allInPlayerAmount = _.map(allInPlayer, "totalAmount");
+        // _.each(allInPlayer, function (p) {
+        //     allInPlayerAmount.push(Pot.getAmountForPlayer(allData.pots, p.playerNo, round));
+        // });
 
 
         console.log("allInPlayerAmount", allInPlayerAmount);
         console.log("activePlayers", activePlayers);
         console.log("allData.pots", allData.pots);
 
-
-        _.each(activePlayers, function (p) {
-            playerAmount.push(Pot.getAmountForPlayer(allData.pots, p.playerNo, round));
-        });
+        playerAmount = _.map(activePlayers, "totalAmount");
+        // _.each(activePlayers, function (p) {
+        //     playerAmount.push(Pot.getAmountForPlayer(allData.pots, p.playerNo, round));
+        // });
 
         console.log("playerAmount", playerAmount);
         //all have equal amounts and none of them has sone AllIn
@@ -171,7 +169,6 @@ var model = {
             });
         }
 
-
         //when allin amount is larger than paid amount 
         if (!amountRemaining && _.uniq(playerAmount).length == 1) {
             amountStatus = true;
@@ -183,11 +180,15 @@ var model = {
     solveInfo: function (allData, callback) {
         var finalData = {};
         var tableInfo = allData.table;
-        var PlayersInfo = allData.players;
+        //var PlayersInfo = allData.players;
         var potsInfo = allData.pots;
         console.log(allData);
         //current Player
-        var currentPlayer = _.find(PlayersInfo, function (p) {
+        var PlayersInfo = _.each(allData.players, function (p) {
+            return p.isActive && !p.isFold
+        });
+
+        var currentPlayer = _.find(allData.players, function (p) {
             return p.isTurn;
         });
 
@@ -210,15 +211,18 @@ var model = {
             var paidAmtPerPot = 0;
 
             //get maximum amount for particular round
-            potMaxLimit = _.max(_.map(pot.players, function (p) {
-                if (p.round == status) {
-                    return p.amount;
-                }
-            }));
+            // potMaxLimit = _.max(_.map(pot.players, function (p) {
+            //     if (p.round == status) {
+            //         return p.amount;
+            //     }
+            // }));
+
+            potMaxLimitObj = _.maxBy(pot.players, "amount");
+
 
             console.log("potMaxLimit1", potMaxLimit);
             // for new round take maximum amount from previous round
-            if (!potMaxLimit) {
+            if (!potMaxLimitObj) {
                 // var prvstatus = Table.getPrvStatus(status);
                 // potMaxLimit = _.max(_.map(pot.players, function (p) {
                 //     if (p.round == prvstatus) {
@@ -226,12 +230,14 @@ var model = {
                 //     }
                 // }));
                 potMaxLimit = 0;
+            } else {
+                potMaxLimit = potMaxLimitObj.amount;
             }
 
             //  console.log("potMaxLimit2", potMaxLimit);
             //finding current player to abstract amount already paid
             var playerAmt = _.find(pot.players, function (p) {
-                return (currentPlayer.playerNo == p.playerNo && p.round == status);
+                return (currentPlayer.playerNo == p.playerNo);
             });
 
             if (playerAmt) {
@@ -256,45 +262,58 @@ var model = {
         //get AllIn amount 
 
         //remaining balance of players with  added amount in that round
-        var playerBalances = _.map(PlayersInfo, function (p) {
-            var paidPerRound = 0;
+        // var playerBalances = _.map(PlayersInfo, function (p) {
+        //     var paidPerRound = 0;
 
-            paidPerRound = Pot.getAmountForPlayer(potsInfo, p.playerNo, status);
+        //     paidPerRound = Pot.getAmountForPlayer(potsInfo, p.playerNo, status);
 
-            console.log("paidPerRound playerNo ", paidPerRound);
-            if (p.playerNo == currentPlayer.playerNo) {
-                currentPlayerBalance = p.buyInAmt - p.totalAmount;
-            }
+        //     console.log("paidPerRound playerNo ", paidPerRound);
+        //     if (p.playerNo == currentPlayer.playerNo) {
+        //         currentPlayerBalance = p.buyInAmt - p.totalAmount;
+        //     }
 
-            //getAmountForPlayer
+        //     //getAmountForPlayer
 
-            // if (playerRound) {
-            //     paidPerRound = playerRound.amount
-            // }
-            return p.buyInAmt - p.totalAmount + paidPerRound;
-        });
-        //var secondHighPlAmt =  playerBalances[1]
-        playerBalances.sort(function (a, b) {
+        //     // if (playerRound) {
+        //     //     paidPerRound = playerRound.amount
+        //     // }
+        //     return p.buyInAmt - p.totalAmount + paidPerRound;
+        // });
+        // //var secondHighPlAmt =  playerBalances[1]
+        // playerBalances.sort(function (a, b) {
+        //     return b - a
+        // });
+
+        // // console.log("currentPlayerBalance", currentPlayerBalance);
+
+        // //getAmountForPlayer
+        // //remaining balance
+        // //var currentPlayerBalance = currentPlayer.BuyIn - currentPlayer.totalAmount + ;   
+        // //var currentPlayerBalance = currentPlayer.BuyIn - currentPlayer.totalAmount + ;   
+        // //var currentPlayerBalance = currentPlayer.BuyIn - currentPlayer.totalAmount + ;
+        // console.log("currentPlayerBalance", currentPlayerBalance);
+        // console.log("playerBalances", playerBalances);
+        // if (playerBalances[1] < currentPlayerBalance) {
+        //     var allInAmount = playerBalances[1];
+        //     allInAmount -= paidAmt;
+        // } else {
+        //     var allInAmount = currentPlayerBalance;
+        // }
+        var buyInAmts = _.map(PlayersInfo, "buyInAmt");
+        buyInAmts.sort(function (a, b) {
             return b - a
         });
+        var allInAmount = 0;
 
-        // console.log("currentPlayerBalance", currentPlayerBalance);
-
-        //getAmountForPlayer
-        //remaining balance
-        //var currentPlayerBalance = currentPlayer.BuyIn - currentPlayer.totalAmount + ;   
-        //var currentPlayerBalance = currentPlayer.BuyIn - currentPlayer.totalAmount + ;   
-        //var currentPlayerBalance = currentPlayer.BuyIn - currentPlayer.totalAmount + ;
-        console.log("currentPlayerBalance", currentPlayerBalance);
-        console.log("playerBalances", playerBalances);
-        if (playerBalances[1] < currentPlayerBalance) {
-            var allInAmount = playerBalances[1];
-            allInAmount -= paidAmt;
+        if (buyInAmts[1] < currentPlayer.buyInAmt) {
+            allInAmount = buyInAmts[1];
         } else {
-            var allInAmount = currentPlayerBalance;
+            allInAmount = currentPlayer.buyInAmt;
         }
 
+        allInAmount = allInAmount - currentPlayer.totalAmount;
         console.log("allInAmount", allInAmount);
+
         //return data
         allData.tableStatus = status;
         allData.currentPlayer = currentPlayer;
@@ -313,7 +332,7 @@ var model = {
             var player = {};
             var deductAmt = 0;
             var payAmt = item.payableAmt;
-            console.log("payAmt", payAmt);
+            console.log("payableAmt ", item, key);
             ///////////////////////////////////
             // handle if someone has done allIn before with lesser amount
             //   amountTobeAdded = amountTobeAdded - payAmt;
@@ -349,11 +368,13 @@ var model = {
 
             /////////////////////////////////
             //add all the remaining money if is greater than payable money
+            
             if (key == (pots.length - 1) && amountTobeAdded > payAmt) {
-                payAmt = amountTobeAdded; 
+                console.log("(pots.length - 1) ", (pots.length - 1), "key ", key);
+                payAmt = amountTobeAdded;
             }
-
-            if (amountTobeAdded == 0) {
+               
+            if (amountTobeAdded == 0 || payAmt == 0) {
                 callback(null);
             } else {
                 // player = _.find(item.players, function (p) {
@@ -377,6 +398,7 @@ var model = {
                             round: data.tableStatus,
                             potId: item._id
                         }
+                        //add remaing money to existing pot
                         Pot.makeEntryAddAmount(sendData, data.currentPlayer, callback);
                         amountTobeAdded = 0;
                     });
@@ -436,7 +458,7 @@ var model = {
         Pot.createPot(potData, function (err, newPot) {
             if (newPot) {
                 var playerIndex = _.findIndex(pot.players, function (p) {
-                    return (p.playerNo == currentPlayer.playerNo && p.round == tableStatus)
+                    return (p.playerNo == currentPlayer.playerNo )
                 });
 
                 // if (playerIndex < 0) {
@@ -446,13 +468,12 @@ var model = {
                 //         round: tableStatus
                 //     });
                 // }
-
                 async.eachOfSeries(pot.players, function (item, key, callback) {
                     console.log(item);
-                    if (item.round != tableStatus) {
-                        console.log("inside condition");
-                        callback(null);
-                    } else {
+                    // if (item.round != tableStatus) {
+                    //     console.log("inside condition");
+                    //     callback(null);
+                    // } else {
                         if (item.amount > amount) {
                             var finalAmount = item.amount - amount;
                             console.log("item.amount", item.amount);
@@ -464,7 +485,7 @@ var model = {
                                     var sendData = {};
                                     sendData.playerNo = item.playerNo;
                                     sendData.amount = finalAmount;
-                                    sendData.round = item.round;
+                                   // sendData.round = item.round;
                                     sendData.potId = pot._id;
                                     Pot.makeEntryRemoveAmount(sendData, currentPlayer, callback);
                                 },
@@ -473,7 +494,7 @@ var model = {
                                     var sendData = {};
                                     sendData.playerNo = item.playerNo;
                                     sendData.amount = finalAmount;
-                                    sendData.round = item.round;
+                                    //sendData.round = item.round;
                                     sendData.potId = newPot._id;
                                     Pot.makeEntryAddAmount(sendData, currentPlayer, callback);
                                 }
@@ -482,7 +503,7 @@ var model = {
                         } else {
                             callback(null);
                         }
-                    }
+                   // }
                 }, function (err, data) {
                     callback(err, newPot);
                 });
@@ -540,17 +561,17 @@ var model = {
             }
             if (Pot.players) {
                 var playerIndex = _.findIndex(Pot.players, function (p) {
-                    return (p.playerNo == data.playerNo && p.round == data.round);
+                    return (p.playerNo == data.playerNo);
                 });
             }
             if (playerIndex >= 0) {
                 Pot.players[playerIndex].amount = parseInt(Pot.players[playerIndex].amount) + parseInt(data.amount);
-                Pot.players[playerIndex].round = data.round;
+                //Pot.players[playerIndex].round = data.round;
                 Pot.totalAmount = parseInt(Pot.totalAmount) + parseInt(data.amount);
             } else {
                 var player = {};
                 player.amount = data.amount;
-                player.round = data.round;
+                // player.round = data.round;
                 player.playerNo = data.playerNo;
                 Pot.players.push(player);
                 // console.log("...........player",player);
@@ -576,17 +597,17 @@ var model = {
             }
             if (Pot.players) {
                 var playerIndex = _.findIndex(Pot.players, function (p) {
-                    return (p.playerNo == data.playerNo && p.round == data.round);
+                    return (p.playerNo == data.playerNo);
                 });
             }
             if (playerIndex >= 0) {
                 Pot.players[playerIndex].amount = parseInt(Pot.players[playerIndex].amount) - parseInt(data.amount);
-                Pot.players[playerIndex].round = data.round;
+                // Pot.players[playerIndex].round = data.round;
                 Pot.totalAmount = parseInt(Pot.totalAmount) - parseInt(data.amount);
             } else {
                 var player = {};
                 player.amount = data.amount;
-                player.round = data.round;
+                // player.round = data.round;
                 player.playerNo = data.playerNo;
                 Pot.players.push(player);
                 // console.log("...........player",player);
