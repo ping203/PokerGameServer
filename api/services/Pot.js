@@ -196,8 +196,8 @@ var model = {
             callback("No one has turn");
             return 0;
         }
-        console.log("currentPlayer", currentPlayer);
-        console.log("potsInfo length", potsInfo.length);
+       // console.log("currentPlayer", currentPlayer);
+       // console.log("potsInfo length", potsInfo.length);
         //round of table 
         var status = tableInfo.status;
 
@@ -254,6 +254,8 @@ var model = {
 
         });
 
+        console.log(" before callAmount", callAmount);
+        console.log(" paidAmt", paidAmt);
         callAmount = callAmount - paidAmt; // deduct already paid amount
 
         //getPrvStatus
@@ -299,6 +301,11 @@ var model = {
         // } else {
         //     var allInAmount = currentPlayerBalance;
         // }
+        // var remainingBalances = _.map(PlayersInfo, function(p){
+        //       return p.buyInAmt - p.totalAmount;
+        // });
+
+        // currentPlayerBalance = currentPlayer.buyInAmt - currentPlayer.totalAmount;
         var buyInAmts = _.map(PlayersInfo, "buyInAmt");
         buyInAmts.sort(function (a, b) {
             return b - a
@@ -306,12 +313,12 @@ var model = {
         var allInAmount = 0;
 
         if (buyInAmts[1] < currentPlayer.buyInAmt) {
-            allInAmount = buyInAmts[1];
+            allInAmount = buyInAmts[1] - currentPlayer.totalAmount;
         } else {
-            allInAmount = currentPlayer.buyInAmt;
+            allInAmount = currentPlayer.buyInAmt - currentPlayer.totalAmount;
         }
 
-        allInAmount = allInAmount - currentPlayer.totalAmount;
+        //allInAmount = allInAmount - ;
         console.log("allInAmount", allInAmount);
 
         //return data
@@ -402,7 +409,7 @@ var model = {
                         Pot.makeEntryAddAmount(sendData, data.currentPlayer, callback);
                         amountTobeAdded = 0;
                     });
-                } else if (minAllInAmt && minAllInAmt < amountTobeAdded) {
+                } else if (minAllInAmt && minAllInAmt < payAmt) {
                     console.log("case 2 when amount to be addded is greater than allIn added amount  ");
                     //case 2 when amount to be addded is greater than allIn added amount  
                     var splitPotAmount = minAllInAmt;
@@ -513,6 +520,7 @@ var model = {
     solvePot: function (data, action, amount, callback) {
         var tableId = data.table;
         var playerNo = data.playerNo;
+      
         //  var action = data.action;
         async.waterfall([
             function (callback) {
@@ -540,7 +548,9 @@ var model = {
                 default:
                     break;
             }
-            Pot.addAmtToPot(data, callback);
+            Pot.addAmtToPot(data, function(err, returnData){
+                    callback(err, {action: action, amount:data.amountTobeAdded, playerNo: playerNo});
+            });
 
         });
         //  Player.getAllInfo(data.table,function(err, allData){
@@ -549,7 +559,7 @@ var model = {
     },
     //params: playerNo, amount, round, PotId
     makeEntryAddAmount: function (data, currentPlayer, callback) {
-        console.log(data);
+       // console.log(data);
         console.log("makeEntryAddAmount");
         playerIndex = -1;
         Pot.findOne({

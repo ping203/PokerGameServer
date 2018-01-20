@@ -268,6 +268,7 @@ var model = {
                         callback(err);
                     } else {
                         Table.blastSocketWinner(tableId);
+                        CommunityCards.setNewGameTimeOut(tableId);
                         callback();
                     }
                 });
@@ -458,7 +459,7 @@ var model = {
 
                 });
                 Pot.solveInfo(allData, function (err, data) {
-                    console.log("inside allData");
+                   // console.log("inside allData");
                     if (err) {
                         console.log("inside allData err", err);
                         callback(null, allData);
@@ -488,8 +489,8 @@ var model = {
                                 allData.isRaised = true;
                             }
 
-                            console.log("remainingBalance", remainingBalance);
-                            console.log("data.payableAmt", data.payableAmt);
+                           // console.log("remainingBalance", remainingBalance);
+                           // console.log("data.payableAmt", data.payableAmt);
                             if (remainingBalance >= data.callAmount && !allData.isChecked) {
                                 allData.isCalled = true;
                             }
@@ -1385,6 +1386,7 @@ var model = {
                     },
                     function (player, callback) {
                         Pot.solvePot(player, 'raise', data.amount, function (err, data) {
+                            Table.blastSocket(tableId, data);
                             callback(err, tableId);
                         });
                     },
@@ -1422,7 +1424,7 @@ var model = {
                     function (player, callback) {
                         player.hasCalled = true;
                         player.save(function (err, data) {
-                            Table.blastSocket(tableId);
+                           
                             callback(err, data);
                         });
                     },
@@ -1430,6 +1432,7 @@ var model = {
                         console.log("player", player);
                         console.log("inside callback check", callback);
                         Pot.solvePot(player, 'call', 0, function (err, data) {
+                                Table.blastSocket(tableId, data);   
                             callback(err);
                         });
                     },

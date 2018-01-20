@@ -206,11 +206,12 @@ var model = {
         var transStatus = "tableWon";
         var transAmt;
         transData.amount = data.totalAmount;
-        transData.status = "tableWon";
+        transData.transType = "tableWon";
         // var accessToken = data.accessToken;
-        if (parseInt(transAmt) == NaN) {
-            callback("Enter Valid Amount");
-        }
+        // if (parseInt(transAmt) == NaN) {
+        //     callback("Enter Valid Amount");
+        // }
+
         User.findOne({
             _id: data.user
         }).exec(function (err, userData) {
@@ -241,6 +242,15 @@ var model = {
                         userData.save(function (err, data) {
                             callback(err, data);
                         });
+                    },
+                    player: function (callback) {
+                        Player.update({
+                            _id: data._id
+                        }, {
+                            $inc: {
+                                buyInAmt: data.totalAmount
+                            }
+                        }).exec(callback)
                     }
                 }, function (err, result) {
                     if (err) {
@@ -258,7 +268,7 @@ var model = {
     },
     tableLostAmount: function (data, callback) {
         var transData = {};
-        transData.status = "tableLost";
+        transData.transType = "tableLost";
         // var transAmt = data.amount;
         transData.amount = data.totalAmount;
         //var accessToken = data.accessToken;
@@ -298,6 +308,16 @@ var model = {
                         userData.save(function (err, data) {
                             callback(err, data);
                         });
+                    },
+                    player: function (callback) {
+                        var decAmount = -data.totalAmount;
+                        Player.update({
+                            _id: data._id
+                        }, {
+                            $inc: {
+                                buyInAmt: decAmount
+                            }
+                        }).exec(callback);
                     }
                 }, function (err, result) {
                     if (err) {

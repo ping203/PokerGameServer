@@ -170,6 +170,7 @@ var model = {
     createCron: function (interval, callback) {
         cron.schedule(interval, callback);
     },
+
     createTurnSchedule: function () {
         var insterval = '*/15 * * * * *';
         var tableId = 123;
@@ -196,6 +197,13 @@ var model = {
             });
         }
         CommunityCards.createCron(insterval, callback);
+    },
+    setNewGameTimeOut: function (tableId) {
+        setTimeout(function (tableId) {
+            Player.newGame({
+                tableId: tableId
+            }, function(){});
+        }, tableId, 30);
     },
     setTimeOut: function (tableId, playerNo) {
         Table.findOne({
