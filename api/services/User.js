@@ -282,6 +282,7 @@ var model = {
         });
     },
     profile: function (data, callback, getGoogle) {
+        console.log("profile ", data);
         var str = "name email mobile balance city country";
         if (getGoogle) {
             str += " googleAccessToken googleRefreshToken";

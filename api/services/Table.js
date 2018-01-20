@@ -54,7 +54,15 @@ var schema = new Schema({
     isStraddle: {
         type: Boolean,
         default: false
-    }
+    },
+    currentRoundAmt: [{
+        playerNo: {
+            type: Number
+        },
+        amount: {
+            type: Number
+        }
+    }]
 });
 
 schema.plugin(deepPopulate, {});
@@ -516,9 +524,12 @@ var model = {
                 }
                 console.log("allData.extra", allData.extra);
                 _.each(allData.players, function (p) {
-                    sails.sockets.blast("newGame", {
+                    sails.sockets.broadcast(p.socketId, "newGame", {
                         data: allData
                     });
+                    // sails.sockets.blast("newGame", {
+                    //     data: allData
+                    // });
                 });
             }
         });
@@ -594,7 +605,7 @@ var model = {
             var index = _.findIndex(status, function (s) {
                 return s == data.status
             });
-
+            data.currentRoundAmt = [];
             if (index >= 0) {
                 data.status = status[index + 1];
             }

@@ -199,11 +199,12 @@ var model = {
         CommunityCards.createCron(insterval, callback);
     },
     setNewGameTimeOut: function (tableId) {
+        console.log("newgame timer");
         setTimeout(function (tableId) {
             Player.newGame({
                 tableId: tableId
             }, function(){});
-        }, tableId, 30);
+        }, 30 * 1000, tableId);
     },
     setTimeOut: function (tableId, playerNo) {
         Table.findOne({
