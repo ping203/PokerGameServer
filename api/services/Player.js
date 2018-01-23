@@ -82,6 +82,10 @@ var schema = new Schema({
     autoRebuy: {
         type: Boolean,
         default: false
+    },
+    autoRebuyAmt: {
+        type: Number,
+        default: 0
     }
 });
 schema.plugin(deepPopulate, {
@@ -236,24 +240,100 @@ var model = {
         }, callback);
 
     },
-    reFillBuyIn: function (data, callback) {
-        var amount = parseInt(data.amount);
-        User.findOne({
-            accessToken: data.accessToken
-        }).exec(function (err, user) {
-            if (err || _.isEmpty(user)) {
+    updateSocket: function (data, callback) {
+        console.log("update socket");
+        async.parallel({
+            user: function (callback) {
+                User.findOne({
+                    accessToken: data.accessToken
+                }).exec(callback);
+            },
+            table: function (callback) {
+                Table.findOne({
+                    _id: data.tableId
+                }).exec(callback)
+            }
+        }, function (err, result) {
+            if (err || _.isEmpty(result.user) || _.isEmpty(result.table)) {
                 callback(err);
             } else {
+
                 Player.update({
                     table: data.tableId,
-                    user: user._id
+                    user: result.user._id
+                }, {
+                    $set: {
+                        socketId: data.socketId
+                    }
+                }).exec(function (err, data) {
+                    Table.blastSocket(result.table._id);
+                    callback(err, data)
+                });
+            }
+        });
+    },
+    reFillBuyIn: function (data, callback) {
+        var amount = parseInt(data.amount);
+        var autoRebuy = false;
+        var autoRebuyAmt = 0;
+        if (data.autoRebuy) {
+            autoRebuy = true;
+            autoRebuyAmt = amount;
+        }
+        async.parallel({
+            user: function (callback) {
+                User.findOne({
+                    accessToken: data.accessToken
+                }).exec(callback);
+            },
+            table: function (callback) {
+                Table.findOne({
+                    _id: data.tableId
+                }).exec(callback)
+            }
+        }, function (err, result) {
+            if (err || _.isEmpty(result.user) || _.isEmpty(result.table)) {
+                callback(err);
+            } else {
+                var isActive = true;
+                if (result.table.status != 'beforeStart') {
+                    isActive = false;
+                }
+                Player.update({
+                    table: data.tableId,
+                    user: result.user._id
                 }, {
                     $inc: {
                         buyInAmt: amount
+                    },
+                    $set: {
+                        isActive: isActive,
+                        autoRebuy: autoRebuy,
+                        autoRebuyAmt: autoRebuyAmt
                     }
-                }).exec(callback);
+                }).exec(function (err, data) {
+                    Table.blastSocket(result.table._id);
+                    callback(err, data)
+                });
             }
         });
+        // User.findOne({
+        //     accessToken: data.accessToken
+        // }).exec(function (err, user) {
+        //     if (err || _.isEmpty(user)) {
+        //         callback(err);
+        //     } else {
+        //         Player.update({
+        //             table: data.tableId,
+        //             user: user._id
+        //         }, {
+        //             $inc: {
+        //                 buyInAmt: amount
+        //             },
+
+        //         }).exec(callback);
+        //     }
+        // });
 
 
     },
@@ -507,18 +587,19 @@ var model = {
                             _.each(data.pots, function (p) {
                                 totalRoundAmount += p.potMaxLimit;
                             });
- 
-                             var  maxAmountObj    = _.maxBy(allData.table.currentRoundAmt, "amount");
-                             if(!maxAmountObj && _.isEmpty(maxAmountObj)){
+
+                            var maxAmountObj = _.maxBy(allData.table.currentRoundAmt, "amount");
+                            if (!maxAmountObj && _.isEmpty(maxAmountObj)) {
                                 maxAmount = 0;
-                             }else{
-                                maxAmount = maxAmountObj.amount; 
-                             }
-                            allData.fromRaised = maxAmount + allData.table.bigBlind;
-                              console.log("allData.fromRaised", allData.fromRaised);   
-                            if (remainingBalance >= allData.fromRaised) {
-                                allData.isRaised = true;
+                            } else {
+                                maxAmount = maxAmountObj.amount;
                             }
+                            allData.fromRaised = maxAmount + 100;
+                            if (maxAmount == 0) {
+                                allData.fromRaised = allData.table.bigBlind;
+                            }
+                            console.log("allData.fromRaised", allData.fromRaised);
+                            
 
                             // console.log("remainingBalance", remainingBalance);
                             // console.log("data.payableAmt", data.payableAmt);
@@ -530,6 +611,10 @@ var model = {
 
                             if (allData.toRaised > data.allInAmount) {
                                 allData.toRaised = data.allInAmount;
+                            }
+
+                            if (remainingBalance >= allData.fromRaised && allData.fromRaised < allData.toRaised ) {
+                                allData.isRaised = true;
                             }
                             // allData.isRaised = true;
                             delete allData.tableStatus;
@@ -552,6 +637,7 @@ var model = {
         var tableId = data.tableId;
         async.waterfall([
                 function (callback) {
+                    //async.parallel();
                     GameLogs.flush(function (err, data) {
                         callback(err);
                     });
@@ -596,12 +682,25 @@ var model = {
                     console.log(fwCallback);
                     Model.find({
                         table: tableId
-                    }).exec(function (err, players) {
+                    }).deepPopulate('user').exec(function (err, players) {
                         if (err) {
                             callback(err);
                         } else {
                             async.each(players,
                                 function (p, callback) {
+                                    var buyInAmt = p.buyInAmt;
+                                    var isActive = true;
+                                    if (p.buyInAmt == 0 && p.autoRebuy) {
+                                        buyInAmt = p.autoRebuyAmt;
+                                        if (p.user.balance < p.autoRebuyAmt) {
+                                            buyInAmt = p.user.balance;
+                                        }
+                                    }
+
+                                    if (p.buyInAmt == 0 && !p.autoRebuy) {
+
+                                        isActive = false;
+                                    }
                                     //var buyInAmt = p.buyInAmt - p.totalAmount;
                                     Model.update({
                                         table: tableId,
@@ -622,8 +721,8 @@ var model = {
                                             isBigBlind: false,
                                             totalAmount: 0,
                                             hasTurnCompleted: false,
-                                            isActive: true,
-                                            //buyInAmt: buyInAmt
+                                            isActive: isActive,
+                                            buyInAmt: buyInAmt
                                         },
 
                                     }, {
@@ -708,7 +807,7 @@ var model = {
                     table: data.tableId
                 }, {
                     $set: {
-                        isActive: true,
+                        //isActive: true,
                         isDealer: false
                     }
                 }, {
@@ -2114,13 +2213,15 @@ var model = {
             isFold: 1,
             isActive: 1,
             isTurn: 1,
-            isLastBlind: 1
+            isLastBlind: 1,
+            user: 1
         };
 
         data.communityCards = {
             cardNo: 1,
             isBurn: 1,
-            cardValue: 1
+            cardValue: 1,
+            serve: 1
         };
 
         data.pot = {

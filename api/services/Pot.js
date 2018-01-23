@@ -42,28 +42,27 @@ var model = {
             type: 'main'
         }).exec(callback);
     },
-    addCurrentRoundAmt: function(data, callback){
-           Table.findOne(
-            {
-                _id: data.tableId
-            }).exec(function(err, table){
-                if(table.currentRoundAmt){
-                   var player = _.findIndex(table.currentRoundAmt, function(c){
-                         return  data.playerNo == c.playerNo
-                    });
-                    if(player >= 0){
-                        table.currentRoundAmt[player]["amount"] += data.amount;
-                    } else{
-                        table.currentRoundAmt.push(data);
-                    }
-                } else{
-                    table.currentRoundAmt = [data]; 
-                }
-                table.save(function(err, data){
-                       console.log(err);
-                       callback(err, data);
+    addCurrentRoundAmt: function (data, callback) {
+        Table.findOne({
+            _id: data.tableId
+        }).exec(function (err, table) {
+            if (table.currentRoundAmt) {
+                var player = _.findIndex(table.currentRoundAmt, function (c) {
+                    return data.playerNo == c.playerNo
                 });
+                if (player >= 0) {
+                    table.currentRoundAmt[player]["amount"] += data.amount;
+                } else {
+                    table.currentRoundAmt.push(data);
+                }
+            } else {
+                table.currentRoundAmt = [data];
+            }
+            table.save(function (err, data) {
+                console.log(err);
+                callback(err, data);
             });
+        });
     },
     declareWinner: function (allData, callback) {
         async.concat(allData.pots, function (p, callback) {
@@ -115,11 +114,15 @@ var model = {
             Pot.getMainPot(data.tableId, callback);
         }, function (potData, callback) {
             data.potId = potData._id;
-            Pot.makeEntryAddAmount(data, currentPlayer, function(err){
+            Pot.makeEntryAddAmount(data, currentPlayer, function (err) {
                 callback(err)
             });
+        }, function (callback) {
+            Pot.addCurrentRoundAmt(data, function(err, data){
+                  callback(err);
+            });
         }, function(callback){
-           Pot.addCurrentRoundAmt(data, callback);
+            Player.allInCheck(currentPlayer, callback)
         }], callback);
     },
     getAmountForPlayer: function (potsInfo, playerNo, round) {
@@ -348,11 +351,20 @@ var model = {
         //allInAmount = allInAmount - ;
         console.log("allInAmount", allInAmount);
 
+        var currentRoundAmt = _.find(allData.table.currentRoundAmt, function (p) {
+            return p.playerNo == currentPlayer.playerNo;
+        }) ;
+   
+        var currentRoundPaidAmt = 0;
+        if(currentRoundAmt){
+            currentRoundPaidAmt =  currentRoundAmt.amount;  
+        }
         //return data
         allData.tableStatus = status;
         allData.currentPlayer = currentPlayer;
         allData.callAmount = callAmount;
         allData.allInAmount = allInAmount;
+       allData.currentRoundPaidAmt = currentRoundPaidAmt;
         //finalData.potsInfo = potsInfo;
 
         callback(null, allData);
@@ -547,7 +559,8 @@ var model = {
     solvePot: function (data, action, amount, callback) {
         var tableId = data.table;
         var playerNo = data.playerNo;
-
+        var originalAmt = parseInt(amount);
+        
         //  var action = data.action;
         async.waterfall([
             function (callback) {
@@ -562,14 +575,17 @@ var model = {
             switch (action) {
                 case 'call':
                     data.amountTobeAdded = data.callAmount;
+                    originalAmt = data.amountTobeAdded;
                     break;
                 case 'allIn':
                     data.amountTobeAdded = data.allInAmount;
                     break;
                 case 'raise':
-                    amount = parseInt(amount);
+                     amount = parseInt(amount);
+                     amount -= data.currentRoundPaidAmt; 
                     data.amountTobeAdded = amount;
                     if (amount > data.allInAmount) {
+                       // originalAmt = data.allInAmount;
                         data.amountTobeAdded = data.allInAmount;
                     }
                     break;
@@ -580,11 +596,15 @@ var model = {
                 if (err) {
                     callback(err);
                 } else {
-                    Pot.addCurrentRoundAmt( {tableId:tableId, playerNo: playerNo, amount:data.amountTobeAdded},
+                    Pot.addCurrentRoundAmt({
+                            tableId: tableId,
+                            playerNo: playerNo,
+                            amount: data.amountTobeAdded
+                        },
                         function (err, tableData) {
                             callback(err, {
                                 action: action,
-                                amount: data.amountTobeAdded,
+                                amount: originalAmt,
                                 playerNo: playerNo
                             });
                         }

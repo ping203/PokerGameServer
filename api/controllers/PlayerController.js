@@ -16,8 +16,11 @@
         findWinner: function (req, res) {
             Player.findWinner(req.body, res.callback);
         },
-        getAllDetails: function(req, res){
-            Player.getAllDetails(req.body, res.callback); 
+        getAllDetails: function (req, res) {
+            Player.getAllDetails(req.body, res.callback);
+        },
+        reFillBuyIn: function (req, res) {
+            Player.reFillBuyIn(req.body, res.callback);
         },
         newGame: function (req, res) {
             Player.newGame(req.body, res.callback);
@@ -54,6 +57,10 @@
         addTab: function (req, res) {
             Player.addTab(req.body, res.callback);
         },
+        updateSocket: function(req, res){
+            console.log("update socket", req.body);
+              Player.updateSocket(req.body, res.callback);
+        },
         serve: function (req, res) {
             Player.serve(req.body, res.callback);
         },
@@ -80,6 +87,7 @@
             Player.allIn(req.body, res.callback);
         },
         raise: function (req, res) {
+            console.log("data....", req.body)
             Player.raise(req.body, res.callback);
         },
         // moveTurn: function (req, res) {
@@ -94,31 +102,31 @@
         },
         createTurnSchedule: function () {
             var insterval = '*/15 * * * * *';
-            var tableId=  123;
+            var tableId = 123;
             var callback = function () {
-                console.log("tableId ",tableId);
+                console.log("tableId ", tableId);
                 CommunityCards.checkServe(tableId, function (err, dataserve) {
-                        if (err) {
-                            console.log(err);
-                        } else {
-                            if (dataserve && dataserve.serve) {
-                                Player.find({
-                                    table: tableId
-                                }).sort({
-                                    updatedAt: -1
-                                }).limit(1).exec(function (err, data) {
-                                    if (err) {
-                                        console.log(err);
-                                    } else {
-                                      //  if (moment(data.updatedAt).);
-                                    }
-                                });
-                            }
+                    if (err) {
+                        console.log(err);
+                    } else {
+                        if (dataserve && dataserve.serve) {
+                            Player.find({
+                                table: tableId
+                            }).sort({
+                                updatedAt: -1
+                            }).limit(1).exec(function (err, data) {
+                                if (err) {
+                                    console.log(err);
+                                } else {
+                                    //  if (moment(data.updatedAt).);
+                                }
+                            });
                         }
-                    });
-                }
-                CommunityCards.createCron(insterval, callback);
+                    }
+                });
             }
+            CommunityCards.createCron(insterval, callback);
+        }
         //getTabDetail
     };
 

@@ -204,7 +204,7 @@ var model = {
             Player.newGame({
                 tableId: tableId
             }, function(){});
-        }, 30 * 1000, tableId);
+        }, 5 * 1000, tableId);
     },
     setTimeOut: function (tableId, playerNo) {
         Table.findOne({
@@ -229,14 +229,14 @@ var model = {
                         console.log(err);
                     } else {
 
-                        // if (data && data.player && !moment(data.player.updatedAt).isAfter(moment().subtract(timeout, 'seconds'))) {
-                        //     Player.fold({
-                        //         tableId: tableId,
-                        //         accessToken: 'fromSystem'
-                        //     }, function () {});
-                        // }
+                        if (data && data.player && !moment(data.player.updatedAt).isAfter(moment().subtract(timeout, 'seconds'))) {
+                            Player.fold({
+                                tableId: tableId,
+                                accessToken: 'fromSystem'
+                            }, function () {});
+                        }
                     }
-                })
+                });
                 // Player.findOne({
                 //     table: tableId,
                 //     isTurn: true

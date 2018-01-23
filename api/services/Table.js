@@ -120,8 +120,8 @@ var model = {
                 });
 
 
-
-
+              
+                var player = _.cloneDeep(removerPlayer)
                 var socketId = removerPlayer.socketId;
                 console.log("removedIds", removedIds);
                 //  console.log("removerPlayer...........", removerPlayer)
@@ -136,6 +136,10 @@ var model = {
                     function (callback) {
                         removerPlayer.remove(callback);
                     },
+                    function (callback) {
+                        Transaction.tableLostAmount(player, callback);
+                            
+                    }
                     // function (callback) {
                     //     sails.sockets.leave(socketId, String("room" + result.table._id), callback);
                     // }
@@ -246,7 +250,7 @@ var model = {
                     callback("Invalid data");
                     return 0;
                 }
-
+   
                 playerAdded = _.find(result.players, function (p) {
                     return (p.user + "" == user._id + "");
                 });
@@ -266,6 +270,14 @@ var model = {
                     return 0;
                 }
 
+                var positionFilled = _.findIndex(result.players, function(p){
+                    return p.playerNo == data.playerNo;
+                });
+
+                if(positionFilled >= 0){
+                     callback("position filled");
+                     return 0;
+                }
                 // Player.find({
                 //     table: data.tableId
                 // }).sort({
@@ -287,9 +299,15 @@ var model = {
                 player.playerNo = data.playerNo;
                 player.buyInAmt = data.amount;
                 player.socketId = data.socketId;
+                player.autoRebuy = data.autoRebuy;
                 if (result.table.status != "beforeStart") {
                     player.isActive = false;
                 }
+   
+                if(player.autoRebuy){
+                    player.autoRebuyAmt = player.buyInAmt;
+                }
+
                 async.waterfall([function (callback) {
                     // if (playerIndex >= 0) {
                     //     Table.removePlayer(data, function (err, data) {
