@@ -55,6 +55,10 @@ var schema = new Schema({
         type: Boolean,
         default: false
     },
+    setDealer: {
+        type: Boolean,
+        default: false
+    },
     currentRoundAmt: [{
         playerNo: {
             type: Number
@@ -120,9 +124,14 @@ var model = {
                 });
 
 
-              
+
                 var player = _.cloneDeep(removerPlayer)
                 var socketId = removerPlayer.socketId;
+                var removeCheck = false;
+
+                if (result.table.status == 'beforeStart') {
+                    removeCheck = true;
+                }
                 console.log("removedIds", removedIds);
                 //  console.log("removerPlayer...........", removerPlayer)
                 //result.table.activePlayer = result.table.activePlayer;
@@ -134,12 +143,29 @@ var model = {
                         result.table.save(callback);
                     },
                     function (callback) {
-                        removerPlayer.remove(callback);
+                        if (removeCheck) {
+                            removerPlayer.remove(callback);
+                        } else {
+                            removerPlayer.tableLeft = true;
+                            removerPlayer.isActive = true;
+                            // removerPlayer.user = "";
+                            removerPlayer.save(function (err, foldPlayer) {
+                                if (err) {
+                                    callback(err);
+                                } else {
+                                    Player.fold({
+                                        tableId: data.tableId,
+                                        accessToken: 'fromSystem',
+                                        foldPlayer: foldPlayer
+                                    }, callback);
+                                }
+                            });
+                        }
                     },
-                    function (callback) {
-                        Transaction.tableLostAmount(player, callback);
-                            
-                    }
+                    // function (callback) {
+                    //     Transaction.tableLostAmount(player, callback);
+
+                    // }
                     // function (callback) {
                     //     sails.sockets.leave(socketId, String("room" + result.table._id), callback);
                     // }
@@ -250,13 +276,13 @@ var model = {
                     callback("Invalid data");
                     return 0;
                 }
-   
+
                 playerAdded = _.find(result.players, function (p) {
                     return (p.user + "" == user._id + "");
                 });
                 console.log(playerAdded);
                 if (playerAdded) {
-               
+
                     playerIndex = _.findIndex(table.activePlayer, function (p) {
                         return (p + "" == playerAdded._id + "");
                     });
@@ -270,13 +296,13 @@ var model = {
                     return 0;
                 }
 
-                var positionFilled = _.findIndex(result.players, function(p){
+                var positionFilled = _.findIndex(result.players, function (p) {
                     return p.playerNo == data.playerNo;
                 });
 
-                if(positionFilled >= 0){
-                     callback("position filled");
-                     return 0;
+                if (positionFilled >= 0) {
+                    callback("position filled");
+                    return 0;
                 }
                 // Player.find({
                 //     table: data.tableId
@@ -303,8 +329,8 @@ var model = {
                 if (result.table.status != "beforeStart") {
                     player.isActive = false;
                 }
-   
-                if(player.autoRebuy){
+
+                if (player.autoRebuy) {
                     player.autoRebuyAmt = player.buyInAmt;
                 }
 
@@ -481,12 +507,14 @@ var model = {
                 //     data: allData
                 // });
                 _.each(allData.players, function (p) {
-                    sails.sockets.broadcast(p.socketId, "showWinner", {
-                        data: allData
-                    });
+                    if (!p.tableLeft) {
+                        sails.sockets.broadcast(p.socketId, "showWinner", {
+                            data: allData
+                        });
+                    }
                 });
             }
-        });
+        }, true);
     },
     blastAddPlayerSocket: function (tableId, extraData) {
         Player.getAllDetails({
@@ -519,7 +547,7 @@ var model = {
             }
         });
     },
-    blastNewGame: function(tableId, extraData){
+    blastNewGame: function (tableId, extraData) {
         Player.getAllDetails({
             tableId: tableId
         }, function (err, allData) {
@@ -536,12 +564,17 @@ var model = {
                 console.log(err);
             } else {
                 if (!_.isEmpty(extraData)) {
+
                     allData.extra = extraData;
                 } else {
                     allData.extra = {};
                 }
                 console.log("allData.extra", allData.extra);
-                _.each(allData.players, function (p) {
+                var players = _.cloneDeep(allData.players);
+                _.remove(allData.players, function (p) {
+                    return p.tableLeft;
+                });
+                _.each(players, function (p) {
                     sails.sockets.broadcast(p.socketId, "newGame", {
                         data: allData
                     });
@@ -550,8 +583,8 @@ var model = {
                     // });
                 });
             }
-        });
-    }, 
+        }, false);
+    },
     blastSocket: function (tableId, extraData, fromUndo) {
         console.log(tableId);
         console.log("inside blastSocket", extraData);
@@ -576,10 +609,13 @@ var model = {
                     allData.extra = {};
                 }
                 console.log("allData.extra", allData.extra);
+
                 _.each(allData.players, function (p) {
-                    sails.sockets.broadcast(p.socketId, "Update", {
-                        data: allData
-                    });
+                    if (!p.tableLeft) {
+                        sails.sockets.broadcast(p.socketId, "Update", {
+                            data: allData
+                        });
+                    }
                 });
             }
         });

@@ -20,6 +20,7 @@
 
 // Ensure we're in the project directory, so relative paths work as expected
 // no matter where we actually lift from.
+//console.log("Process ",process)
 process.chdir(__dirname);
 global.mongoose = require('mongoose');
 global["Grid"] = require('gridfs-stream');
