@@ -7,28 +7,37 @@ var uploadurl = imgurl;
 
 myApp.factory('NavigationService', function ($http) {
     var navigation = [
-    //     {
-    //     name: "Users",
-    //     classis: "active",
-    //     sref: "#!/page/viewUser//",
-    //     icon: "phone"
-    // },{
-    //     name: "Categories",
-    //     classis: "active",
-    //     sref: "#!/page/viewCategory//",
-    //     icon: "phone"
-    // },{
-    //     name: "Companies",
-    //     classis: "active",
-    //     sref: "#!/page/viewCompany//",
-    //     icon: "phone"
-    // },
+        {
+        name: "Users",
+        classis: "active",
+        sref: "#!/page/viewUser//",
+        icon: "phone"
+    },
+    {
+        name: "Vouchers",
+        classis: "active",
+        sref: "#!/page/viewVoucher//",
+        icon: "phone"
+    },
+    {
+        name: "Dealers",
+        classis: "active",
+        sref: "#!/page/viewDealer//",
+        icon: "phone"
+    },
+    {
+        name: "Refunds",
+        classis: "active",
+        sref: "#!/page/viewRefund//",
+        icon: "phone"
+    },
     {
         name: "Tables",
         classis: "active",
         sref: "#!/page/viewTable//",
         icon: "phone"
-    }
+    },
+    
 ];
 
     return {

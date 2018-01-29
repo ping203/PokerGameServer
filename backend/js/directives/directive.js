@@ -449,7 +449,9 @@ myApp.directive('viewField', function ($http, $filter) {
                     }
                 }
             };
+            
             if (_.isObjectLike($scope.value[$scope.type.tableRef])) {
+                
                 $scope.storeObj = $scope.type;
                 $scope.storeValue = $scope.value;
                 $scope.objectDepth();
@@ -457,7 +459,7 @@ myApp.directive('viewField', function ($http, $filter) {
             } else {
                 $scope.form.model = $scope.value[$scope.type.tableRef];
             }
-
+            $scope.form.model = _.at($scope.value, $scope.type.tableRef)[0];
             $scope.template = "views/viewField/" + $scope.type.type + ".html";
         }
     };

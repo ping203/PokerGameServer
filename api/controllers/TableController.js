@@ -9,6 +9,10 @@ var controller = {
     removePlayer: function (req, res) {
         Table.removePlayer(req.body, res.callback);
     },
+    makePlayerInactive: function(req, res){
+        console.log("inside makePlayerInactive", req.body);
+        Table.makePlayerInactive(req.body, res.callback);  
+    },
     testSocket: function (req, res) {
         // console.log(sails.sockets.rooms());
         //sails.sockets.subscribers(, cb);

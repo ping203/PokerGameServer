@@ -80,8 +80,46 @@ var model = {
         var requiredData = Player.requiredData();
         this.find({}, requiredData.table).exec(callback);
     },
+    makePlayerInactive: function (data, callback) {
+        async.parallel({
+            user: function (callback) {
+                User.findOne({
+                    accessToken: data.accessToken
+                }).exec(callback);
+            },
+
+            player: function (callback) {
+                Player.find({
+                    table: data.tableId,
+                    //  playerNo: data.playerNo
+                }).exec(callback);
+            }
+        }, function (err, result) {
+            if (_.isEmpty(result.user) || _.isEmpty(result.player)) {
+                callback("Invalide Request");
+                return 0;
+            }
+
+            var removerPlayer = _.find(result.player, function (p) {
+                return (result.user._id + "" == p.user + "");
+            });
+            // var socketId = result.player.socketId;
+            if (!removerPlayer) {
+                callback(null);
+                return 0;
+            }
+
+            if (data.tableLeft) {
+                removerPlayer.tableLeft = true;
+            } else {
+                removerPlayer.tableLeft = false;
+            }
+
+            removerPlayer.save(callback);
+        });
+    },
     removePlayer: function (data, callback) {
-        console.log(data);
+        // console.log(data);
         async.parallel({
             user: function (callback) {
                 User.findOne({
@@ -119,7 +157,7 @@ var model = {
                 }
 
                 var removedIds = _.remove(result.table.activePlayer, function (p) {
-                    console.log((p + "" == removerPlayer._id + ""));
+                    //console.log((p + "" == removerPlayer._id + ""));
                     return (p + "" == removerPlayer._id + "");
                 });
 
@@ -132,12 +170,12 @@ var model = {
                 if (result.table.status == 'beforeStart') {
                     removeCheck = true;
                 }
-                console.log("removedIds", removedIds);
+                //  console.log("removedIds", removedIds);
                 //  console.log("removerPlayer...........", removerPlayer)
                 //result.table.activePlayer = result.table.activePlayer;
                 result.table.markModified('activePlayer');
-                console.log("socketId....", socketId);
-                console.log("result.table ", String("room" + result.table._id));
+                //console.log("socketId....", socketId);
+                //console.log("result.table ", String("room" + result.table._id));
                 async.parallel([
                     function (callback) {
                         result.table.save(callback);
@@ -173,7 +211,7 @@ var model = {
                     Table.blastSocket(data.tableId, {
                         removePlayer: true
                     });
-                    console.log("err", err);
+                    // console.log("err", err);
                     callback(err, result);
                 });
 
@@ -277,16 +315,16 @@ var model = {
                     return 0;
                 }
 
-                playerAdded = _.find(result.players, function (p) {
-                    return (p.user + "" == user._id + "");
+                playerIndex = _.findIndex(result.players, function (p) {
+                    return (p.user + "" == user._id + "" && p.table + "" == data.tableId + "");
                 });
                 console.log(playerAdded);
-                if (playerAdded) {
+                // if (playerAdded) {
 
-                    playerIndex = _.findIndex(table.activePlayer, function (p) {
-                        return (p + "" == playerAdded._id + "");
-                    });
-                }
+                //     playerIndex = _.findIndex(table.activePlayer, function (p) {
+                //         return (p + "" == playerAdded._id + "");
+                //     });
+                // }
 
                 console.log("playerIndex ", playerIndex);
                 //already exists
@@ -346,11 +384,9 @@ var model = {
                 }, function (callback) {
                     Player.saveData(player, function (err, player) {
                         if (err) {
-                            console.log("err...................", err);
+                           
                             callback(err);
                         } else {
-
-                            console.log("data saved successfully+++++++++++++++++");
                             if (_.isEmpty(result.CommunityCards)) {
                                 //configuring things for rooms befor starting a game. 
                                 // console.log("inside");
@@ -513,6 +549,12 @@ var model = {
                         });
                     }
                 });
+
+                _.each(allData.dealer, function (d) {
+                    sails.sockets.broadcast(d.socketId, "newGame", {
+                        data: allData
+                    });
+                });
             }
         }, true);
     },
@@ -582,6 +624,12 @@ var model = {
                     //     data: allData
                     // });
                 });
+
+                _.each(allData.dealer, function (d) {
+                    sails.sockets.broadcast(d.socketId, "newGame", {
+                        data: allData
+                    });
+                });
             }
         }, false);
     },
@@ -616,6 +664,11 @@ var model = {
                             data: allData
                         });
                     }
+                });
+                _.each(allData.dealer, function (d) {
+                    sails.sockets.broadcast(d.socketId, "Update", {
+                        data: allData
+                    });
                 });
             }
         });

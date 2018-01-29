@@ -8,7 +8,10 @@ var schema = new Schema({
         enum: ["diposit", "withdraw", "tableLost", "tableWon"]
     },
     amount: Number,
-    status: String,
+    status: {
+        type: String,
+        enum: ["Sent", "Processing", "Completed"]
+    },
     transactionId: String,
     transactionLog: Schema.Types.Mixed,
     Voucher: String,
@@ -18,13 +21,51 @@ var schema = new Schema({
     }
 });
 
-schema.plugin(deepPopulate, {});
+schema.plugin(deepPopulate, {
+    populate: {
+        'userId': {
+            select: 'name'
+        }
+    }
+});
 schema.plugin(uniqueValidator);
 schema.plugin(timestamps);
 module.exports = mongoose.model('Transaction', schema);
 
-var exports = _.cloneDeep(require("sails-wohlig-service")(schema));
+var exports = _.cloneDeep(require("sails-wohlig-service")(schema, "userId", "userId"));
 var model = {
+    generateRefundExcel: function (data, res) {
+        var Model = this;
+        //    var pipeLine = [{
+        //        $match :{
+        //         {transType: "withdraw"}
+        //        },
+        //        $project: {
+        //            amount:1,
+        //            status:1,
+        //            User:"$UserId.name"
+        //        }
+        //    }];
+        Model.find({
+            transType: "withdraw"
+        }, {
+            "userId": 1,
+            _id: 0,
+            amount: 1,
+            status: 1
+        }).deepPopulate("userId").lean().exec(function (err, data) {
+            // console.log("data", data);
+            if (err) {
+                callback(err);
+            } else {
+                _.each(data, function (doc) {
+                    doc['User'] = doc['userId']['name'];
+                    delete doc['userId']
+                });
+                Config.generateExcel('Refund', data, res);
+            }
+        });
+    },
     getDetails: function (data, callback) {
         var Model = this;
         var pagination = 20;
@@ -82,6 +123,7 @@ var model = {
             }
         });
     },
+
     buyCoins: function (coinData, callback) {
         //console.log();
         var transData = {};
@@ -144,13 +186,16 @@ var model = {
                 transData.userId = data._id;
                 transData.amount = transAmt;
                 transData.balance = finalAmount;
+                transData.status = 'Sent';
                 //change balance of user
                 data.balance = finalAmount;
                 async.parallel([function (callback) {
                     Transaction.saveData(transData, callback);
-                }, function (callback) {
-                    data.save(callback);
-                }], function (err, result) {
+                }, 
+                // function (callback) {
+                //     data.save(callback);
+                // }
+            ], function (err, result) {
                     if (err) {
                         console.log(err);
                         callback(err);
@@ -311,11 +356,13 @@ var model = {
                     },
                     player: function (callback) {
                         var decAmount = -data.totalAmount;
+
                         Player.update({
                             _id: data._id
                         }, {
                             $inc: {
-                                buyInAmt: decAmount
+                                buyInAmt: decAmount,
+                                //totalAmount: 0
                             }
                         }).exec(callback);
                     }

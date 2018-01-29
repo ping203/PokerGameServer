@@ -10,6 +10,9 @@ var controller = {
     },
     getDetails: function(req, res){
         Transaction.getDetails(req.body, res.callback);
+    },
+    generateRefundExcel: function(req, res){
+        Transaction.generateRefundExcel(req.body, res);
     }
 };
 module.exports = _.assign(module.exports, controller);

@@ -45,7 +45,7 @@ var schema = new Schema({
     },
     table: {
         type: Schema.Types.ObjectId,
-        ref: 'Player'
+        ref: 'Table'
     },
     user: {
         type: Schema.Types.ObjectId,
@@ -245,7 +245,7 @@ var model = {
 
     },
     updateSocket: function (data, callback) {
-        console.log("update socket");
+        //console.log("update socket");
         async.parallel({
             user: function (callback) {
                 User.findOne({
@@ -342,8 +342,8 @@ var model = {
 
     },
     showWinner: function (data, callback) {
-        console.log("inside showwinner");
-        console.log(data);
+       // console.log("inside showwinner");
+       // console.log(data);
         var tableId = data.tableId;
         async.parallel({
             players: function (callback) {
@@ -371,7 +371,7 @@ var model = {
             if (err) {
                 callback(err);
             } else {
-                console.log("data", data);
+               // console.log("data", data);
                 Pot.declareWinner(data, function (err, data1) {
                     if (err) {
                         callback(err);
@@ -484,12 +484,12 @@ var model = {
 
                     callback("Please Login First To Continue.");
                 } else {
-                    console.log("inside get Player", userData[0].player);
+                   // console.log("inside get Player", userData[0].player);
                     if (_.isEmpty(userData[0].player)) {
                         callback("Not Registered as a Player.");
                     } else {
                         Player.currentTurn(data.tableId, function (err, player) {
-                            console.log("player   ", player);
+                          //  console.log("player   ", player);
                             if (err || _.isEmpty(player)) {
                                 callback(err);
                             } else {
@@ -541,6 +541,11 @@ var model = {
                 }, requiredData.pot).sort({
                     _id: 1
                 }).lean().exec(callback);
+            },
+            dealer: function(callback){
+               Dealer.find({
+                   table: tableId
+               }).exec(callback);
             },
             table: function (callback) {
                 Table.findOne({
@@ -594,7 +599,7 @@ var model = {
                 Pot.solveInfo(allData, function (err, data) {
                     // console.log("inside allData");
                     if (err) {
-                        console.log("inside allData err", err);
+                      //  console.log("inside allData err", err);
                         callback(null, allData);
                     } else {
 
@@ -626,7 +631,7 @@ var model = {
                             if (maxAmount == 0) {
                                 allData.fromRaised = allData.table.bigBlind;
                             }
-                            console.log("allData.fromRaised", allData.fromRaised);
+                           // console.log("allData.fromRaised", allData.fromRaised);
 
 
                             // console.log("remainingBalance", remainingBalance);
@@ -679,7 +684,7 @@ var model = {
                         setDealer: false
                         //activePlayer: []
                     }).exec(function (err, data) {
-                        console.log("err", err);
+                       // console.log("err", err);
                         callback(err);
                     });
                 },
@@ -719,7 +724,7 @@ var model = {
                 //     });
                 // },
                 function (fwCallback) {
-                    console.log(fwCallback);
+                    //console.log(fwCallback);
                     Model.find({
                         table: tableId
                     }).deepPopulate('user').exec(function (err, players) {
@@ -840,7 +845,7 @@ var model = {
                     Pot.remove({
                         table: tableId
                     }, function (err, data) {
-                        console.log("err", err);
+                        //console.log("err", err);
                         callback(err)
                     })
                 },
@@ -855,7 +860,7 @@ var model = {
                 Table.blastNewGame(tableId, {
                     newGame: true
                 });
-                console.log("final, err");
+               // console.log("final, err");
                 callback(err, cumCards);
             });
         readLastValue = "";
@@ -863,11 +868,11 @@ var model = {
     },
     makeDealer: function (data, callback) {
         var Model = Player;
-        console.log("make dealer", data);
+       // console.log("make dealer", data);
         async.waterfall([
             function (callback) {
                 Player.findOne({
-                    isActive: true,
+                   // isActive: true,
                     table: data.tableId,
                     isDealer: true
                 }).exec(callback);
@@ -906,7 +911,7 @@ var model = {
                         callback(err);
                     } else {
                         if (!_.isEmpty(dealer)) {
-                            console.log("inside make dealer", dealer);
+                           // console.log("inside make dealer", dealer);
                             var playerIndex = _.findIndex(players, function (player) {
                                 return player.playerNo > dealer.playerNo;
                             });
@@ -958,7 +963,7 @@ var model = {
                                 makeDealer: function (callback) {
                                     players[0].isDealer = true;
                                     players[0].save(function (err, data) {
-                                        console.log(err);
+                                        //console.log(err);
                                         callback(err);
                                     });
                                 },
@@ -1120,7 +1125,7 @@ var model = {
                                 }).exec(callback);
                             }
                         }, function (err, response) {
-                            console.log(response);
+                            //console.log(response);
                             // Initialize all variables
                             var allCards = [];
                             var playerCards = [];
@@ -1200,11 +1205,11 @@ var model = {
                                                 //     });
                                                 // }
                                             ], function (err, data) {
-                                                console.log("blast the socket");
-                                                console.log("extra data", {
-                                                    player: true,
-                                                    value: response.players[toServe].playerNo
-                                                });
+                                               // console.log("blast the socket");
+                                                // console.log("extra data", {
+                                                //     player: true,
+                                                //     value: response.players[toServe].playerNo
+                                                // });
                                                 Table.blastSocket(tableId, {
                                                     player: true,
                                                     value: response.players[toServe].playerNo
@@ -2317,7 +2322,8 @@ var model = {
             name: 1,
             maximumNoOfPlayers: 1,
             status: 1,
-            currentRoundAmt: 1
+            currentRoundAmt: 1,
+            timeoutTime: 1
         };
         data.player = {
             playerNo: 1,

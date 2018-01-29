@@ -228,7 +228,7 @@ myApp.controller('DashboardCtrl', function ($scope, TemplateService, NavigationS
     .controller('PageJsonCtrl', function ($scope, TemplateService, NavigationService, JsonService, $timeout, $state, $stateParams, $uibModal) {
         $scope.json = JsonService;
         $scope.template = TemplateService.changecontent("none");
-        $scope.menutitle = NavigationService.makeactive("Country List");
+        $scope.menutitle = NavigationService.makeactive("page");
         TemplateService.title = $scope.menutitle;
         $scope.navigation = NavigationService.getnav();
         JsonService.getJson($stateParams.id, function () {});
@@ -279,6 +279,7 @@ myApp.controller('DashboardCtrl', function ($scope, TemplateService, NavigationS
         $scope.json = JsonService;
         $scope.template = TemplateService;
         var i = 0;
+        var filter = {};
         if ($stateParams.page && !isNaN(parseInt($stateParams.page))) {
             $scope.currentPage = $stateParams.page;
         } else {
@@ -308,9 +309,13 @@ myApp.controller('DashboardCtrl', function ($scope, TemplateService, NavigationS
             if (keywordChange) {
                 $scope.currentPage = 1;
             }
+            if($scope.json.json.apiCall.filter){
+                filter = $scope.json.json.apiCall.filter;
+            }
             NavigationService.search($scope.json.json.apiCall.url, {
                     page: $scope.currentPage,
-                    keyword: $scope.search.keyword
+                    keyword: $scope.search.keyword,
+                    filter: filter
                 }, ++i,
                 function (data, ini) {
                     if (ini == i) {
@@ -354,6 +359,18 @@ myApp.controller('DashboardCtrl', function ($scope, TemplateService, NavigationS
         };
 
         $scope.saveData = function (formData) {
+            console.log("formData ", formData);
+            _.each(formData, function(item, key){
+               var filedIndex =  _.findIndex($scope.json.json.fields, function(i, k){
+                         return  i.complexValue && i.tableRef == key;
+                });
+    
+                if(filedIndex >= 0){
+                   delete formData[key];
+                }
+            
+            });
+            
             NavigationService.apiCall($scope.json.json.apiCall.url, formData, function (data) {
                 var messText = "created";
                 if (data.value === true) {
@@ -396,7 +413,7 @@ myApp.controller('DashboardCtrl', function ($scope, TemplateService, NavigationS
         if ($scope.value && $scope.value[$scope.type.tableRef]) {
             $scope.form.model = $scope.value[$scope.type.tableRef];
         }
-
+        //$scope.form.model = _.at($scope.value, $scope.type.tableRef)[0];
         $scope.template = "views/field/" + $scope.type.type + ".html";
 
         // Multiple checkbox selection
@@ -453,6 +470,10 @@ myApp.controller('DashboardCtrl', function ($scope, TemplateService, NavigationS
 
         }
         // BOX
+        if($scope.type.type == "text"){
+            //console.log($scope.type.tableRef);
+          $scope.formData[$scope.type.tableRef] = _.at($scope.formData, $scope.type.tableRef)[0];
+        }
         if ($scope.type.type == "date") {
             $scope.formData[$scope.type.tableRef] = moment($scope.formData[$scope.type.tableRef]).toDate();
         }
