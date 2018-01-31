@@ -1,5 +1,5 @@
 {
-    "title": "Company",
+    "title": "Voucher",
     "description": "List of Companies",
     "pageType": "view",
     "sendIdWithCreate": true,
@@ -9,16 +9,20 @@
         "isSort": "",
         "tableRef": "name"
     }, {
-        "name": "Description",
+        "name": "Amount",
         "isSort": "",
-        "tableRef": "description"
+        "tableRef": "amount"
+    }, {
+        "name": "Voucher Code",
+        "isSort": "",
+        "tableRef": "voucherCode"
     }],
     "action": [{
         "name": "edit",
         "icon": "fa-pencil",
         "buttonClass": "btn-primary",
         "type": "page",
-        "action": "editCompany",
+        "action": "editVoucher",
         "fieldsToSend": {
             "_id": "_id"
         }
@@ -27,9 +31,9 @@
         "icon": "fa-trash",
         "buttonClass": "btn-danger",
         "type": "apiCallConfirm",
-        "title": "Delete Company",
-        "content": "Are you sure you want to delete Company?",
-        "api": "Company/delete",
+        "title": "Delete Voucher",
+        "content": "Are you sure you want to delete Voucher?",
+        "api": "Voucher/delete",
         "fieldsToSend": {
             "name": "_id",
             "value": "_id"
@@ -40,24 +44,24 @@
         "icon": "print",
         "class": "btn-danger",
         "type": "redirect",
-        "action": "Company/generateExcel",
+        "action": "Voucher/generateExcel",
         "linkType": "admin"
     }, {
         "name": "Upload Excel",
         "icon": "delete",
         "class": "btn-warning",
         "type": "redirect",
-        "action": "excel-upload/Company",
+        "action": "excel-upload/Voucher",
         "linkType": "internal"
     }, {
         "name": "Create",
         "icon": "plus",
         "class": "btn-success",
         "type": "page",
-        "action": "createCompany"
+        "action": "createVoucher"
     }],
     "apiCall": {
-        "url": "Company/search",
+        "url": "Voucher/search",
         "params": "_id"
     }
 }

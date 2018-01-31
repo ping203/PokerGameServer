@@ -56,6 +56,15 @@
         "disabled": false,
         "validation": [],
         "url": ""
+    },
+    {
+        "name": "Timeout Time",
+        "type": "text",
+        "tableRef": "timeoutTime",
+        "placeholder": "Enter Timeout Time",
+        "id": "timeoutTime",
+        "validation": ["required"],
+        "url": ""
     }],
     "action": [{
         "name": "submit",

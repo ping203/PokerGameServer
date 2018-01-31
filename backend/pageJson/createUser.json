@@ -49,14 +49,6 @@
         "validation": ["", "trim", "unique"],
         "url": ""
     }, {
-        "name": "Forgot Password",
-        "type": "password",
-        "tableRef": "forgotPassword",
-        "placeholder": "Enter forgot password",
-        "id": "forgotPassword",
-        "validation": ["", "trim", "unique"],
-        "url": ""
-    }, {
         "name": "Mobile",
         "type": "text",
         "tableRef": "mobile",
@@ -65,26 +57,14 @@
         "validation": ["required", "trim", "unique"],
         "url": ""
     }, {
-        "name": "OTP",
+        "name": "balance",
         "type": "text",
-        "tableRef": "otp",
-        "placeholder": "Enter Otp",
-        "id": "otp",
+        "tableRef": "balance",
+        "placeholder": "Enter Balance",
+        "id": "balance",
         "disabled": false,
         "validation": ["required", "trim", "unique"],
         "url": ""
-    }, {
-        "name": "AccessLevel",
-        "type": "tags",
-        "tableRef": "accessLevel",
-        "placeholder": "Enter Title",
-        "id": "status",
-        "validation": ["", "trim", ""],
-        "url": "",
-        "dropDownField": "",
-        "dropDownType": "single",
-        "onView": true,
-        "dropDown": ["User", "Admin"]
     }],
     "action": [{
         "name": "submit",

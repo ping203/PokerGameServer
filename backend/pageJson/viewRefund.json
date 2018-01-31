@@ -1,0 +1,56 @@
+{
+    "title": "Refund",
+    "description": "List of Refunds",
+    "pageType": "view",
+    "sendIdWithCreate": true,
+    "urlFields": ["_id"],
+    "fields": [{
+        "name": "User",
+        "isSort": "",
+        "tableRef": "userId.name"
+        
+    }, {
+        "name": "Amount",
+        "isSort": "",
+        "tableRef": "amount"
+    },{
+        "name": "Status",
+        "isSort": "",
+        "tableRef": "status"
+    } ],
+    "action": [{
+        "name": "edit",
+        "icon": "fa-pencil",
+        "buttonClass": "btn-primary",
+        "type": "page",
+        "action": "editRefund",
+        "fieldsToSend": {
+            "_id": "_id"
+        }
+    }, {
+        "name": "delete",
+        "icon": "fa-trash",
+        "buttonClass": "btn-danger",
+        "type": "apiCallConfirm",
+        "title": "Delete Refund",
+        "content": "Are you sure you want to delete Refund?",
+        "api": "Transaction/delete",
+        "fieldsToSend": {
+            "name": "_id",
+            "value": "_id"
+        }
+    }],
+    "button": [{
+        "name": "Excel Export",
+        "icon": "print",
+        "class": "btn-danger",
+        "type": "redirect",
+        "action": "Transaction/generateRefundExcel",
+        "linkType": "admin"
+    }],
+    "apiCall": {
+        "url": "Transaction/search",
+        "filter": {"transType": "withdraw"},
+        "params": "_id"
+    }
+}

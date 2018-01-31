@@ -1,5 +1,5 @@
 {
-    "title": "Category",
+    "title": "Dealer",
     "description": "List of Categories",
     "pageType": "view",
     "sendIdWithCreate": true,
@@ -9,16 +9,20 @@
         "isSort": "",
         "tableRef": "name"
     }, {
-        "name": "Description",
+        "name": "Mobile",
         "isSort": "",
-        "tableRef": "description"
+        "tableRef": "mobile"
+    },{
+        "name": "Email",
+        "isSort": "",
+        "tableRef": "email"
     }],
     "action": [{
         "name": "edit",
         "icon": "fa-pencil",
         "buttonClass": "btn-primary",
         "type": "page",
-        "action": "editCategory",
+        "action": "editDealer",
         "fieldsToSend": {
             "_id": "_id"
         }
@@ -27,9 +31,9 @@
         "icon": "fa-trash",
         "buttonClass": "btn-danger",
         "type": "apiCallConfirm",
-        "title": "Delete Category",
-        "content": "Are you sure you want to delete Category?",
-        "api": "Category/delete",
+        "title": "Delete Dealer",
+        "content": "Are you sure you want to delete Dealer?",
+        "api": "Dealer/delete",
         "fieldsToSend": {
             "name": "_id",
             "value": "_id"
@@ -40,24 +44,24 @@
         "icon": "print",
         "class": "btn-danger",
         "type": "redirect",
-        "action": "Category/generateExcel",
+        "action": "Dealer/generateExcel",
         "linkType": "admin"
     }, {
         "name": "Upload Excel",
         "icon": "delete",
         "class": "btn-warning",
         "type": "redirect",
-        "action": "excel-upload/Category",
+        "action": "excel-upload/Dealer",
         "linkType": "internal"
     }, {
         "name": "Create",
         "icon": "plus",
         "class": "btn-success",
         "type": "page",
-        "action": "createCategory"
+        "action": "createDealer"
     }],
     "apiCall": {
-        "url": "Category/search",
+        "url": "Dealer/search",
         "params": "_id"
     }
 }

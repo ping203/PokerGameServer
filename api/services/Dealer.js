@@ -52,6 +52,8 @@ var model = {
                     console.log(data);
                     var accessToken = [uid(16)];
                     data.accessToken = accessToken;
+                    data.table =  data.tableId;
+                    data.socketId =  data.socketId
                     data.save(function (err, data) {
                         if (err) {
                             callback(err);
@@ -67,13 +69,16 @@ var model = {
             }
         });
     },
-    selectTable: function(data, callback){
-          Dealer.update({
-              accessToken: data.accessToken
-          },{
-              socketId: data.socketId,
-              table: data.tableId
-          }).exec(callback);
-    }
+    connectSocket: function (data, callback) {
+        Dealer.update({
+            accessToken: data.accessToken
+        }, {
+            socketId: data.socketId
+        }).exec(callback);
+    },
+
+
+    
+
 };
 module.exports = _.assign(module.exports, exports, model);

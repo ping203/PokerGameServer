@@ -1,0 +1,67 @@
+{
+    "title": "Edit Refund",
+    "name": "Refund",
+    "jsonPage": "viewRefund",
+    "desciption": "",
+    "pageType": "edit",
+    "urlFields": ["_id"],
+    "fields": [{
+        "name": "Amount",
+        "type": "text",
+        "tableRef": "amount",
+        "placeholder": "Enter Amount",
+        "id": "amount",
+        "validation": ["", "trim", "unique"],
+        "url": ""
+    },{
+       "name": "User",
+        "type": "text",
+        "tableRef": "userId.name",
+        "placeholder": "Enter User",
+        "id": "user",
+        "validation": ["", "trim", "unique"],
+        "complexValue": true,
+        "url": ""
+
+    }, {
+        "name": "Status",
+        "type": "tags",
+        "tableRef": "status",
+        "placeholder": "Enter Status",
+        "id": "status",
+        "validation": ["", "trim", ""],
+        "url": "",
+        "dropDownField": "",
+        "dropDownType": "single",
+        "onView": true,
+        "dropDown": ["Sent", "Processing", "Completed", "Failed"]
+    }],
+    "action": [{
+        "name": "submit",
+        "action": "submitRefund",
+        "stateName": {
+            "page": "page",
+            "json": {
+                "id": "viewRefund"
+            }
+        }
+    }, {
+        "name": "cancel",
+        "sideMenuRedirect": true,
+        "stateName": {
+            "page": "page",
+            "json": {
+                "id": "viewRefund"
+            }
+        }
+    }],
+    "apiCall": {
+        "url": "Transaction/saveTransaction",
+        "params": "_id"
+    },
+    "preApi": {
+        "url": "Transaction/getOne",
+        "params": "_id"
+    }
+
+}

@@ -8,7 +8,7 @@ var schema = new Schema({
         type: Number,
         require: true
     },
-    UsedBy: {
+    usedBy: {
         type: Schema.Types.ObjectId,
         ref: 'User',
     },

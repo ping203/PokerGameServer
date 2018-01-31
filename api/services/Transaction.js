@@ -10,7 +10,7 @@ var schema = new Schema({
     amount: Number,
     status: {
         type: String,
-        enum: ["Sent", "Processing", "Completed"]
+        enum: ["Sent", "Processing", "Completed", "Failed"]
     },
     transactionId: String,
     transactionLog: Schema.Types.Mixed,
@@ -66,6 +66,77 @@ var model = {
             }
         });
     },
+    useVoucher: function (data, callback) {
+        var Model = this;
+        async.parallel({
+            user: function (callback) {
+                Model.findOne({
+                    accessToken: data.accessToken
+                }).exec(callback);
+            },
+            voucher: function (callback) {
+                Model.findOne({
+                    voucherCode: data.voucherCode
+                }).exec(callback);
+            }
+        }, function (err, result) {
+            if (_.isEmpty(result.user)) {
+                callback({msg: "Please login first.", internalErr: true});
+                return 0;
+            }
+            if (_.isEmpty(result.voucher)) {
+                callback({msg: "Invalide voucher code.", internalErr: true});
+                 return 0 ;
+            }
+        
+            if (result.voucher.usedBy) {
+                callback({msg: "Voucher code already used", internalErr: true});
+                return 0;
+            }
+
+            
+            async.parallel([
+                function(callback){
+                    result.user.balance += result.voucher.amount;
+                    result.user.save(callback);
+                },
+                function(callback){
+                     result.voucher.usedBy =  result.user._id;
+                     result.voucher.save(callback)
+                }
+            ], callback);
+            
+        });
+    },
+    saveTransaction: function (data, callback) {
+        console.log(data);
+        var Model = this;
+        var user = data.userId._id;
+        var deductAmt = -data.amount;
+        if (data.transType == 'withdraw' && data.status == 'Completed') {
+            async.parallel([
+                function (callback) {
+                    var instance = Model(data);
+                    instance.isNew = false;
+                    instance.save(callback)
+                },
+                function (callback) {
+                    User.update({
+                        _id: user
+                    }, {
+                        $inc: {
+                            balance: deductAmt
+                        }
+                    }).exec(callback);
+                }
+            ], callback);
+        } else {
+            var instance = Model(data);
+            //to save the document with _id
+            instance.isNew = false;
+            instance.save(callback)
+        }
+    },
     getDetails: function (data, callback) {
         var Model = this;
         var pagination = 20;
@@ -95,28 +166,7 @@ var model = {
                     }).sort({
                         _id: -1
                     }).page(options, callback);
-                    // Model.find({
-                    //             userId: data._id
-                    //         }
-                    //         // {
-                    //         //     _id: 0,
-                    //         //     transType: 1,
-                    //         //     amount: 1,
-                    //         //     status: 1,
-                    //         // }
-                    //     ).sort({
-                    //         _id: -1
-                    //     })
-                    //     // .skip(skipRecords)
-                    //     // .limit(pagination)
-                    //     .exec(function (err, data) {
-                    //         if (err) {
-                    //             callback(err);
-                    //         } else {
 
-                    //             callback(err, data);
-                    //         }
-                    //     });
                 } else {
                     callback("Please login first.");
                 }
@@ -190,12 +240,12 @@ var model = {
                 //change balance of user
                 data.balance = finalAmount;
                 async.parallel([function (callback) {
-                    Transaction.saveData(transData, callback);
-                }, 
-                // function (callback) {
-                //     data.save(callback);
-                // }
-            ], function (err, result) {
+                        Transaction.saveData(transData, callback);
+                    },
+                    // function (callback) {
+                    //     data.save(callback);
+                    // }
+                ], function (err, result) {
                     if (err) {
                         console.log(err);
                         callback(err);

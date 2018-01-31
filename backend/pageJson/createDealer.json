@@ -1,0 +1,64 @@
+{
+    "title": "Create Dealer",
+    "name": "Dealer",
+    "jsonPage": "viewDealer",
+    "desciption": "",
+    "pageType": "create",
+    "urlFields": ["Dealer"],
+    "fields": [{
+        "name": "Name",
+        "type": "text",
+        "tableRef": "name",
+        "placeholder": "Enter Name",
+        "id": "name",
+        "validation": ["required", "trim", "unique"],
+        "url": ""
+    }, {
+        "name": "Password",
+        "type": "password",
+        "tableRef": "password",
+        "placeholder": "Enter password",
+        "id": "password",
+        "validation": ["", "trim", "unique"],
+        "url": ""
+    },
+    {
+        "name": "Email",
+        "type": "text",
+        "tableRef": "email",
+        "placeholder": "Enter Description",
+        "id": "email",
+        "validation": ["required", "trim", "unique"],
+        "url": ""
+    }, {
+        "name": "Mobile NO",
+        "type": "text",
+        "tableRef": "mobile",
+        "placeholder": "Enter Mobile",
+        "id": "mobile",
+        "validation": ["required", "trim", "unique"],
+        "url": ""
+    }],
+    "action": [{
+        "name": "submit",
+        "action": "submitDealer",
+        "stateName": {
+            "page": "page",
+            "json": {
+                "id": "viewDealer"
+            }
+        }
+    }, {
+        "name": "cancel",
+        "sideMenuRedirect": true,
+        "stateName": {
+            "page": "page",
+            "json": {
+                "id": "viewDealer"
+            }
+        }
+    }],
+    "apiCall": {
+        "url": "Dealer/save"
+    }
+}

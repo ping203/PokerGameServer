@@ -16,7 +16,23 @@
         "name": "Mobile",
         "isSort": "",
         "tableRef": "mobile"
-    }],
+    }, {
+        "name": "Balance",
+        "isSort": "",
+        "tableRef": "balance"
+    }, {
+        "name": "city",
+        "isSort": "",
+        "tableRef": "city"
+    },  {
+        "name": "Country",
+        "isSort": "",
+        "tableRef": "country"
+    }
+
+    
+
+  ],
     "action": [{
         "name": "edit",
         "icon": "fa-pencil",

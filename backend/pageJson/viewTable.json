@@ -24,7 +24,11 @@
         "name": "Maximum No Of Player",
         "isSort": "",
         "tableRef": "maximumNoOfPlayers"
-    }],
+    },{
+        "name": "Timeout Time",
+        "isSort": "",
+        "tableRef": "timeoutTime"
+    } ],
     "action": [{
         "name": "edit",
         "icon": "fa-pencil",

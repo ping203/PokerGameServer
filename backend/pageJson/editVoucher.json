@@ -1,7 +1,7 @@
 {
-    "title": "Edit Company",
-    "name": "Company",
-    "jsonPage": "viewCompany",
+    "title": "Edit Voucher",
+    "name": "Voucher",
+    "jsonPage": "viewVoucher",
     "desciption": "",
     "pageType": "edit",
     "urlFields": ["_id"],
@@ -14,32 +14,21 @@
         "validation": ["required", "trim", "unique"],
         "url": ""
     },{
-        "name": "Description",
+        "name": "amount",
         "type": "text",
-        "tableRef": "description",
-        "placeholder": "Enter Description",
+        "tableRef": "amount",
+        "placeholder": "Enter amount",
         "id": "description",
         "validation": ["", "trim"],
-        "url": ""
-    },{
-        "name": "Logo",
-        "type": "image",
-        "tableRef": "logo",
-        "size":"250 x 250",
-        "placeholder": "Upload Logo",
-        "id": "logo",
-        "view": true,
-        "disabled": true,
-        "validation": [],
         "url": ""
     }],
     "action": [{
         "name": "submit",
-        "action": "submitCompany",
+        "action": "submitVoucher",
         "stateName": {
             "page": "page",
             "json": {
-                "id": "viewCompany"
+                "id": "viewVoucher"
             }
         }
     }, {
@@ -48,16 +37,16 @@
         "stateName": {
             "page": "page",
             "json": {
-                "id": "viewCompany"
+                "id": "viewVoucher"
             }
         }
     }],
     "apiCall": {
-        "url": "Company/save",
+        "url": "Voucher/save",
         "params": "_id"
     },
     "preApi": {
-        "url": "Company/getOne",
+        "url": "Voucher/getOne",
         "params": "_id"
     }
 

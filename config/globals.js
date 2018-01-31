@@ -102,6 +102,7 @@ global.Hand = require('pokersolver').Hand;
 // Files to Import
 global["jsFiles"] = require("../frontend/files.js");
 global["cron"] = require("node-cron");
+global["voucher_codes"] = require('voucher-code-generator')
 // global["jsFilesBackend"] = require("../backend/files.js");
 
 //colored console

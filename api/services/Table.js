@@ -81,6 +81,7 @@ var model = {
         this.find({}, requiredData.table).exec(callback);
     },
     makePlayerInactive: function (data, callback) {
+        console.log("makePlayerInactive ", data);
         async.parallel({
             user: function (callback) {
                 User.findOne({
@@ -264,7 +265,7 @@ var model = {
     },
 
     addUserToTable: function (data, callback) {
-        console.log(data);
+      //  console.log(data);
 
 
         // sails.sockets.join(data.socketId, 'room'+ data.tableId , function(err, data1){
@@ -316,9 +317,9 @@ var model = {
                 }
 
                 playerIndex = _.findIndex(result.players, function (p) {
-                    return (p.user + "" == user._id + "" && p.table + "" == data.tableId + "");
+                    return (p.user + "" == user._id + "" && p.table + "" == data.tableId + "" && !p.tableLeft);
                 });
-                console.log(playerAdded);
+               // console.log(playerAdded);
                 // if (playerAdded) {
 
                 //     playerIndex = _.findIndex(table.activePlayer, function (p) {
@@ -326,7 +327,7 @@ var model = {
                 //     });
                 // }
 
-                console.log("playerIndex ", playerIndex);
+               // console.log("playerIndex ", playerIndex);
                 //already exists
                 if (playerIndex >= 0) {
                     console.log("Player Already Added");
@@ -335,7 +336,7 @@ var model = {
                 }
 
                 var positionFilled = _.findIndex(result.players, function (p) {
-                    return p.playerNo == data.playerNo;
+                    return p.playerNo == data.playerNo && !p.tableLeft;
                 });
 
                 if (positionFilled >= 0) {
@@ -372,16 +373,7 @@ var model = {
                     player.autoRebuyAmt = player.buyInAmt;
                 }
 
-                async.waterfall([function (callback) {
-                    // if (playerIndex >= 0) {
-                    //     Table.removePlayer(data, function (err, data) {
-                    //         callback(err);
-                    //     });
-                    // } else {
-                    //     callback();
-                    // }
-                    callback(null);
-                }, function (callback) {
+                async.waterfall([ function (callback) {
                     Player.saveData(player, function (err, player) {
                         if (err) {
                            
@@ -410,7 +402,7 @@ var model = {
                         }
                     });
                 }], function (err, data) {
-                    console.log("err...................", err);
+                    //console.log("err...................", err);
                     callback(err, data)
                 });
 
@@ -616,6 +608,7 @@ var model = {
                 _.remove(allData.players, function (p) {
                     return p.tableLeft;
                 });
+               // console.log("allData.players ", allData.players);
                 _.each(players, function (p) {
                     sails.sockets.broadcast(p.socketId, "newGame", {
                         data: allData
