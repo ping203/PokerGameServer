@@ -5,6 +5,9 @@ var controller = {
     },
     connectSocket: function(req, res){
         Dealer.connectSocket(req.body, res.callback);
+    },
+    createDealer: function(req, res){
+        Dealer.createDealer(req.body, res.callback);
     }
 };
 module.exports = _.assign(module.exports, controller);

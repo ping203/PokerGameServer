@@ -4,7 +4,7 @@ var schema = new Schema({
         required: true,
     },
     mobile: {
-        type: String,
+        type: Number,
         required: true
     },
     email: {
@@ -29,6 +29,10 @@ var schema = new Schema({
     },
     socketId: {
         type: String
+    },
+    balance: {
+        type: Number,
+        default: 0
     }
 });
 
@@ -39,12 +43,24 @@ module.exports = mongoose.model('Dealer', schema);
 
 var exports = _.cloneDeep(require("sails-wohlig-service")(schema));
 var model = {
+    createDealer: function (dealer, callback) {
+        dealer.password = md5(dealer.password);
+        
+        dealer = new this(dealer);
+        if(dealer._id){
+            dealer.isNew = false;
+        }
+        
+        dealer.save(callback);
+    },
     login: function (dealer, callback) {
+        console.log(dealer);
         var Model = this;
         Model.findOne({
             mobile: dealer.mobile,
             password: md5(dealer.password)
         }).exec(function (err, data) {
+            console.log("data", data);
             if (err) {
                 callback(err);
             } else {
@@ -52,8 +68,8 @@ var model = {
                     console.log(data);
                     var accessToken = [uid(16)];
                     data.accessToken = accessToken;
-                    data.table =  data.tableId;
-                    data.socketId =  data.socketId
+                    data.table = dealer.tableId;
+                    data.socketId = dealer.socketId
                     data.save(function (err, data) {
                         if (err) {
                             callback(err);
@@ -64,7 +80,7 @@ var model = {
                         }
                     });
                 } else {
-                    callback("Otp verfication failed");
+                    callback("Invalid credentials");
                 }
             }
         });
@@ -78,7 +94,7 @@ var model = {
     },
 
 
-    
+
 
 };
 module.exports = _.assign(module.exports, exports, model);

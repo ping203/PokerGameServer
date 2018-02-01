@@ -17,8 +17,13 @@ var controller = {
     saveTransaction: function (req, res) {
         Transaction.saveTransaction(req.body, res.callback);
     },
-    userVoucher: function (req, res) {
-        Transaction.userVoucher(req.body, res.callback);  
+    useVoucher: function (req, res) {
+        console.log(req.body);
+        Transaction.useVoucher(req.body, res.callback);  
+    },
+    makeTip: function (req, res) {
+        console.log(req.body);
+        Transaction.makeTip(req.body, res.callback);  
     }
 };
 module.exports = _.assign(module.exports, controller);

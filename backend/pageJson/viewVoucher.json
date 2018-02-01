@@ -16,7 +16,9 @@
         "name": "Voucher Code",
         "isSort": "",
         "tableRef": "voucherCode"
-    }],
+    },{"name": "Used By",
+        "tableRef": "usedBy.name"
+        }],
     "action": [{
         "name": "edit",
         "icon": "fa-pencil",

@@ -59,6 +59,6 @@
         }
     }],
     "apiCall": {
-        "url": "Dealer/save"
+        "url": "Dealer/createDealer"
     }
 }

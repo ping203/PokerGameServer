@@ -5,7 +5,7 @@ var schema = new Schema({
     },
     transType: {
         type: String,
-        enum: ["diposit", "withdraw", "tableLost", "tableWon"]
+        enum: ["diposit", "withdraw", "tableLost", "tableWon","tip","voucher"]
     },
     amount: Number,
     status: {
@@ -14,7 +14,10 @@ var schema = new Schema({
     },
     transactionId: String,
     transactionLog: Schema.Types.Mixed,
-    Voucher: String,
+    voucher: {
+        type: Schema.Types.ObjectId,
+        ref: 'Voucher'
+    },
     balance: {
         type: Number,
         default: 0
@@ -66,16 +69,84 @@ var model = {
             }
         });
     },
+    makeTip: function(data, callback){
+        var Model = this;
+        var amount = parseInt(data.amount);
+         async.parallel({
+             user: function(callback){
+                  User.findOne({
+                     accessToken: data.accessToken      
+                  }).exec(callback);
+             },
+             dealer: function(callback){
+                Dealer.findOne({
+                    table: data.tableId      
+                 }).sort({_id:-1}).exec(callback);
+             },
+             players: function(callback){
+                 Player.find({
+                     table: data.tableId
+                 }).exec(callback);  
+             }
+         }, function(err, result){
+            if (_.isEmpty(result.user)) {
+                callback({msg: "Please login first.", internalErr: true});
+                return 0;
+            }
+            if (_.isEmpty(result.dealer)) {
+                callback({msg: "No Dealer Found.", internalErr: true});
+                 return 0 ;
+            }
+         
+           var player  = _.findIndex(result.players, function(p){
+                 return ( p.user + "" - result.user._id + "");
+             });
+            if(player < 0){
+                callback({msg: "No Player Found.", internalErr: true});
+                return 0 ;
+            }
+             player = result.players[player];
+             player.buyInAmt -= amount;
+             result.user.balance -= amount;
+             result.dealer.amount += amount;
+             var transactionData = {
+                transType : 'tip',
+                status: 'Completed',
+                amount: amount,
+                userId: result.user._id,
+                balance: result.user.balance
+             }
+            async.parallel([
+                function(callback){
+                    player.save(callback)
+                },
+                function(callback){
+                    result.user.save(callback);
+                },
+                function(callback){
+                    result.dealer.save(callback);   
+                },
+                function(callback){
+                    Transaction = new Transaction(transactionData);
+                    Transaction.save(callback);
+                }
+            ], function(err, result){
+                  Table.blastSocket( data.tableId,{action: "tip", amount:amount });
+                  callback(err, {});
+            });
+
+         });
+    },
     useVoucher: function (data, callback) {
         var Model = this;
         async.parallel({
             user: function (callback) {
-                Model.findOne({
+                User.findOne({
                     accessToken: data.accessToken
                 }).exec(callback);
             },
             voucher: function (callback) {
-                Model.findOne({
+                Voucher.findOne({
                     voucherCode: data.voucherCode
                 }).exec(callback);
             }
@@ -103,6 +174,19 @@ var model = {
                 function(callback){
                      result.voucher.usedBy =  result.user._id;
                      result.voucher.save(callback)
+                },
+                function(callback){
+                    var Transaction = {
+                        transType : 'voucher',
+                        status: 'Completed',
+                        amount: amount,
+                        userId: result.user._id,
+                        balance: result.user.balance,
+                        voucher: result.voucher._id
+                     }
+
+                     Transaction(Transaction).save(callback);
+
                 }
             ], callback);
             

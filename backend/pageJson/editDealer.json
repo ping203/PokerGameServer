@@ -59,7 +59,7 @@
         }
     }],
     "apiCall": {
-        "url": "Dealer/save",
+        "url": "Dealer/createDealer",
         "params": "_id"
     },
     "preApi": {

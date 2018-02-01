@@ -511,6 +511,11 @@ var model = {
     },
     getAllDetails: function (data, callback, newGameCheck = false) {
         var tableId = data.tableId;
+        console.log(data);
+        if(!tableId){
+            callback("Invaid Request");
+            return 0;
+        }
         var requiredData = Player.requiredData();
         async.parallel({
             players: function (callback) {

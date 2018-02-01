@@ -18,12 +18,19 @@ var schema = new Schema({
     }
 });
 
-schema.plugin(deepPopulate, {});
+schema.plugin(deepPopulate, {
+    populate: {
+        
+        'usedBy': {
+            select: 'name'
+        }
+    }
+});
 schema.plugin(uniqueValidator);
 schema.plugin(timestamps);
 module.exports = mongoose.model('Voucher', schema);
 
-var exports = _.cloneDeep(require("sails-wohlig-service")(schema));
+var exports = _.cloneDeep(require("sails-wohlig-service")(schema,'usedBy','usedBy'));
 var model = {
     createCode: function (callback) {
         var Model = this;
