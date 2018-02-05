@@ -80,6 +80,7 @@ var model = {
         var requiredData = Player.requiredData();
         this.find({}, requiredData.table).exec(callback);
     },
+    
     makePlayerInactive: function (data, callback) {
         console.log("makePlayerInactive ", data);
         async.parallel({
@@ -306,7 +307,7 @@ var model = {
                 var table = result.table;
                 var playerIndex = -1;
                 //check for max players
-                if (table.activePlayer && table.activePlayer.length == table.maximumNoOfPlayers) {
+                if (table.activePlayer && result.players.length == table.maximumNoOfPlayers) {
                     callback("Room Not Available");
                     return 0;
                 }
@@ -394,10 +395,14 @@ var model = {
                                     CommunityCards.saveData(comData, callback);
 
                                 }, function (err, data1) {
-                                    Table.connectSocket(table, data.socketId, user, player, callback);
+                                    Table.blastAddPlayerSocket(table._id);
+                                    callback(err, player);
+                                   // Table.connectSocket(table, data.socketId, user, player, callback);
                                 });
                             } else {
-                                Table.connectSocket(table, data.socketId, user, player, callback);
+                                Table.blastAddPlayerSocket(table._id);
+                                callback(err, player);
+                                //Table.connectSocket(table, data.socketId, user, player, callback);
                             }
                         }
                     });

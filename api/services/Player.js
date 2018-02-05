@@ -99,13 +99,16 @@ schema.plugin(deepPopulate, {
         },
         'user': {
             select: 'balance'
+        },
+        'table': {
+            select: 'bigBlind'
         }
     }
 });
 schema.plugin(uniqueValidator);
 schema.plugin(timestamps);
 module.exports = mongoose.model('Player', schema);
-var exports = _.cloneDeep(require("sails-wohlig-service")(schema, "cards user", "cards user"));
+var exports = _.cloneDeep(require("sails-wohlig-service")(schema, "cards user table", "cards user table"));
 
 var model = {
     addPlayer: function (data, callback) {
@@ -342,8 +345,8 @@ var model = {
 
     },
     showWinner: function (data, callback) {
-       // console.log("inside showwinner");
-       // console.log(data);
+        // console.log("inside showwinner");
+        // console.log(data);
         var tableId = data.tableId;
         async.parallel({
             players: function (callback) {
@@ -371,7 +374,7 @@ var model = {
             if (err) {
                 callback(err);
             } else {
-               // console.log("data", data);
+                // console.log("data", data);
                 Pot.declareWinner(data, function (err, data1) {
                     if (err) {
                         callback(err);
@@ -484,12 +487,12 @@ var model = {
 
                     callback("Please Login First To Continue.");
                 } else {
-                   // console.log("inside get Player", userData[0].player);
+                    // console.log("inside get Player", userData[0].player);
                     if (_.isEmpty(userData[0].player)) {
                         callback("Not Registered as a Player.");
                     } else {
                         Player.currentTurn(data.tableId, function (err, player) {
-                          //  console.log("player   ", player);
+                            //  console.log("player   ", player);
                             if (err || _.isEmpty(player)) {
                                 callback(err);
                             } else {
@@ -512,7 +515,7 @@ var model = {
     getAllDetails: function (data, callback, newGameCheck = false) {
         var tableId = data.tableId;
         console.log(data);
-        if(!tableId){
+        if (!tableId) {
             callback("Invaid Request");
             return 0;
         }
@@ -547,10 +550,10 @@ var model = {
                     _id: 1
                 }).lean().exec(callback);
             },
-            dealer: function(callback){
-               Dealer.find({
-                   table: tableId
-               }).exec(callback);
+            dealer: function (callback) {
+                Dealer.find({
+                    table: tableId
+                }).exec(callback);
             },
             table: function (callback) {
                 Table.findOne({
@@ -568,10 +571,10 @@ var model = {
                     p['no'] = key + 1;
                 });
 
-                if(allData.table.status == 'beforeStart'){
-                   _.remove(allData.players, function(p){
+                if (allData.table.status == 'beforeStart') {
+                    _.remove(allData.players, function (p) {
                         return p.tableLeft;
-                   });
+                    });
                 }
 
                 _.each(allData.pots, function (p, key) {
@@ -604,7 +607,7 @@ var model = {
                 Pot.solveInfo(allData, function (err, data) {
                     // console.log("inside allData");
                     if (err) {
-                      //  console.log("inside allData err", err);
+                        //  console.log("inside allData err", err);
                         callback(null, allData);
                     } else {
 
@@ -636,7 +639,7 @@ var model = {
                             if (maxAmount == 0) {
                                 allData.fromRaised = allData.table.bigBlind;
                             }
-                           // console.log("allData.fromRaised", allData.fromRaised);
+                            // console.log("allData.fromRaised", allData.fromRaised);
 
 
                             // console.log("remainingBalance", remainingBalance);
@@ -689,11 +692,26 @@ var model = {
                         setDealer: false
                         //activePlayer: []
                     }).exec(function (err, data) {
-                       // console.log("err", err);
+                        // console.log("err", err);
                         callback(err);
                     });
                 },
-
+                function (callback) {
+                    Pot.remove({
+                        table: tableId
+                    }, function (err, data) {
+                        //console.log("err", err);
+                        callback(err)
+                    })
+                },
+                function (callback) {
+                    Pot.createPot({
+                        table: tableId,
+                        type: 'main'
+                    }, function (err) {
+                        callback(err);
+                    });
+                },
                 // function (callback) { // Next Dealer
                 //     Model.find({
                 //         table: tableId,
@@ -732,7 +750,7 @@ var model = {
                     //console.log(fwCallback);
                     Model.find({
                         table: tableId
-                    }).deepPopulate('user').exec(function (err, players) {
+                    }).deepPopulate('user table').exec(function (err, players) {
                         if (err) {
                             callback(err);
                         } else {
@@ -740,6 +758,9 @@ var model = {
                                 function (p, callback) {
                                     var buyInAmt = p.buyInAmt;
                                     var isActive = true;
+                                    var tableLeft = p.tableLeft;
+                                    var payBigBlind = false;
+                                    //var bigBlind = p.table.bigBlind
                                     if (p.buyInAmt == 0 && p.autoRebuy) {
                                         buyInAmt = p.autoRebuyAmt;
                                         if (p.user.balance < p.autoRebuyAmt) {
@@ -751,7 +772,13 @@ var model = {
                                         isActive = false;
                                     }
 
-                                   
+                                    if (!moment(p.updatedAt).isAfter(moment().subtract(300, 'seconds'))) {
+                                        tableLeft = true;
+                                    }
+
+                                    if (!p.isActive && isActive) {
+                                        payBigBlind = true;
+                                    }
                                     //var buyInAmt = p.buyInAmt - p.totalAmount;
                                     // if (p.tableLeft) {
                                     //     async.waterfall([
@@ -792,7 +819,7 @@ var model = {
                                     //         }
                                     //     ]);
                                     // } else {
-                                    Model.update({
+                                    Model.findOneAndUpdate({
                                         table: tableId,
                                         _id: p._id
                                     }, {
@@ -812,12 +839,34 @@ var model = {
                                             totalAmount: 0,
                                             hasTurnCompleted: false,
                                             isActive: isActive,
-                                            buyInAmt: buyInAmt
+                                            buyInAmt: buyInAmt,
+                                            tableLeft: tableLeft
                                         },
 
                                     }, {
-                                        multi: true
-                                    }, callback);
+                                        new: true
+                                    }, function (err, result) {
+                                        console.log(err, result)
+                                        if (err) {
+                                            callback(err);
+                                        } else {
+                                            if (payBigBlind) {
+                                                var pot = {};
+                                                pot.round = 'preFlop';
+                                                pot.amount = p.table.bigBlind;
+                                                pot.playerNo = p.playerNo;
+                                                pot.tableId = tableId;
+                                                //console.log(, pot);
+                                                pot.type = 'main';
+
+                                                Pot.AddToMainPort(pot, result, callback);
+
+                                            } else {
+                                                callback(err);
+                                            }
+                                        }
+                                    });
+
                                     //}
                                 }, fwCallback);
 
@@ -846,14 +895,6 @@ var model = {
                 //         callback(err);
                 //     });
                 // },
-                function (callback) {
-                    Pot.remove({
-                        table: tableId
-                    }, function (err, data) {
-                        //console.log("err", err);
-                        callback(err)
-                    })
-                },
 
                 // function (callback) {
                 //     Player.remove({
@@ -865,7 +906,7 @@ var model = {
                 Table.blastNewGame(tableId, {
                     newGame: true
                 });
-               // console.log("final, err");
+                // console.log("final, err");
                 callback(err, cumCards);
             });
         readLastValue = "";
@@ -873,22 +914,24 @@ var model = {
     },
     makeDealer: function (data, callback) {
         var Model = Player;
-       // console.log("make dealer", data);
+        // console.log("make dealer", data);
         async.waterfall([
             function (callback) {
                 Player.findOne({
-                   // isActive: true,
+                    // isActive: true,
                     table: data.tableId,
                     isDealer: true
                 }).exec(callback);
             },
             function (dealer, callback) {
+
                 Player.remove({
                     table: data.tableId,
                     tableLeft: true
                 }).exec(function (err, data) {
                     callback(err, dealer);
                 });
+
             },
             function (dealer, callback) {
                 Player.update({
@@ -916,7 +959,7 @@ var model = {
                         callback(err);
                     } else {
                         if (!_.isEmpty(dealer)) {
-                           // console.log("inside make dealer", dealer);
+                            // console.log("inside make dealer", dealer);
                             var playerIndex = _.findIndex(players, function (player) {
                                 return player.playerNo > dealer.playerNo;
                             });
@@ -1210,7 +1253,7 @@ var model = {
                                                 //     });
                                                 // }
                                             ], function (err, data) {
-                                               // console.log("blast the socket");
+                                                // console.log("blast the socket");
                                                 // console.log("extra data", {
                                                 //     player: true,
                                                 //     value: response.players[toServe].playerNo
@@ -1528,7 +1571,7 @@ var model = {
                                                 });
                                             },
 
-                                            Pot.createPot,
+                                            // Pot.createPot,
                                             //Player.findLastBlindNext(tableId, callback);
                                             Player.findDealerNext,
                                             Player.makeSmallBlind,
@@ -2349,7 +2392,7 @@ var model = {
             isTurn: 1,
             isLastBlind: 1,
             user: 1,
-            tableLeft:1
+            tableLeft: 1
         };
 
         data.communityCards = {

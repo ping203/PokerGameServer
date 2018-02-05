@@ -65,7 +65,20 @@
         "disabled": false,
         "validation": ["required", "trim", "unique"],
         "url": ""
-    }],
+    },{
+            "name": "Status",
+            "type": "tags",
+            "tableRef": "status",
+            "placeholder": "Enter Status",
+            "id": "status",
+            "validation": ["", "trim", ""],
+            "url": "",
+            "dropDownField": "",
+            "dropDownType": "single",
+            "onView": true,
+            "dropDown": ["Admin", "User"]
+        }
+    ],
     "action": [{
         "name": "submit",
         "action": "submitUser",
@@ -86,6 +99,6 @@
         }
     }],
     "apiCall": {
-        "url": "User/save"
+        "url": "User/createUser"
     }
 }

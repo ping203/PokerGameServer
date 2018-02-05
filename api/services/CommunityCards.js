@@ -74,8 +74,15 @@ var model = {
             _.each(communityCards, function (commu) {
                 player.allCards.push(commu.cardValue);
             });
+            
             player.hand = Hand.solve(player.allCards);
+            console.log("hand>>>>>>>>>>>>>>> ", player.hand);
             player.winName = player.hand.name;
+            var winningCards = player.hand.cards;
+            player.winningCards = [];
+            _.each(winningCards, function(c){
+                player.winningCards.push(c.value + c.suit);
+            });
             player.descr = player.hand.descr;
         });
 

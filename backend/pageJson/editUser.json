@@ -86,7 +86,7 @@
         }
     }],
     "apiCall": {
-        "url": "User/save",
+        "url": "User/createUser",
         "params": "_id"
     },
     "preApi": {

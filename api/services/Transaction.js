@@ -5,7 +5,7 @@ var schema = new Schema({
     },
     transType: {
         type: String,
-        enum: ["diposit", "withdraw", "tableLost", "tableWon","tip","voucher"]
+        enum: ["diposit", "withdraw", "tableLost", "tableWon", "tip", "voucher"]
     },
     amount: Number,
     status: {
@@ -69,73 +69,87 @@ var model = {
             }
         });
     },
-    makeTip: function(data, callback){
+    makeTip: function (data, callback) {
         var Model = this;
         var amount = parseInt(data.amount);
-         async.parallel({
-             user: function(callback){
-                  User.findOne({
-                     accessToken: data.accessToken      
-                  }).exec(callback);
-             },
-             dealer: function(callback){
+        async.parallel({
+            user: function (callback) {
+                User.findOne({
+                    accessToken: data.accessToken
+                }).exec(callback);
+            },
+            dealer: function (callback) {
                 Dealer.findOne({
-                    table: data.tableId      
-                 }).sort({_id:-1}).exec(callback);
-             },
-             players: function(callback){
-                 Player.find({
-                     table: data.tableId
-                 }).exec(callback);  
-             }
-         }, function(err, result){
+                    table: data.tableId
+                }).sort({
+                    updatedAt: -1
+                }).exec(callback);
+            },
+            players: function (callback) {
+                Player.find({
+                    table: data.tableId
+                }).exec(callback);
+            }
+        }, function (err, result) {
             if (_.isEmpty(result.user)) {
-                callback({msg: "Please login first.", internalErr: true});
+                callback({
+                    msg: "Please login first.",
+                    internalErr: true
+                });
                 return 0;
             }
             if (_.isEmpty(result.dealer)) {
-                callback({msg: "No Dealer Found.", internalErr: true});
-                 return 0 ;
+                callback({
+                    msg: "No Dealer Found.",
+                    internalErr: true
+                });
+                return 0;
             }
-         
-           var player  = _.findIndex(result.players, function(p){
-                 return ( p.user + "" - result.user._id + "");
-             });
-            if(player < 0){
-                callback({msg: "No Player Found.", internalErr: true});
-                return 0 ;
+
+            var player = _.findIndex(result.players, function (p) {
+                return (p.user + "" - result.user._id + "");
+            });
+            if (player < 0) {
+                callback({
+                    msg: "No Player Found.",
+                    internalErr: true
+                });
+                return 0;
             }
-             player = result.players[player];
-             player.buyInAmt -= amount;
-             result.user.balance -= amount;
-             result.dealer.amount += amount;
-             var transactionData = {
-                transType : 'tip',
+            player = result.players[player];
+            player.buyInAmt -= amount;
+            result.user.balance -= amount;
+            result.dealer.amount += amount;
+            var transactionData = {
+                transType: 'tip',
                 status: 'Completed',
                 amount: amount,
                 userId: result.user._id,
                 balance: result.user.balance
-             }
+            }
             async.parallel([
-                function(callback){
+                function (callback) {
                     player.save(callback)
                 },
-                function(callback){
+                function (callback) {
                     result.user.save(callback);
                 },
-                function(callback){
-                    result.dealer.save(callback);   
+                function (callback) {
+                    result.dealer.save(callback);
                 },
-                function(callback){
+                function (callback) {
                     Transaction = new Transaction(transactionData);
                     Transaction.save(callback);
                 }
-            ], function(err, result){
-                  Table.blastSocket( data.tableId,{action: "tip", amount:amount });
-                  callback(err, {});
+            ], function (err, result) {
+                Table.blastSocket(data.tableId, {
+                    action: "tip",
+                    amount: amount
+                });
+                callback(err, {});
             });
 
-         });
+        });
     },
     useVoucher: function (data, callback) {
         var Model = this;
@@ -152,44 +166,53 @@ var model = {
             }
         }, function (err, result) {
             if (_.isEmpty(result.user)) {
-                callback({msg: "Please login first.", internalErr: true});
+                callback({
+                    msg: "Please login first.",
+                    internalErr: true
+                });
                 return 0;
             }
             if (_.isEmpty(result.voucher)) {
-                callback({msg: "Invalide voucher code.", internalErr: true});
-                 return 0 ;
-            }
-        
-            if (result.voucher.usedBy) {
-                callback({msg: "Voucher code already used", internalErr: true});
+                callback({
+                    msg: "Invalide voucher code.",
+                    internalErr: true
+                });
                 return 0;
             }
 
-            
+            if (result.voucher.usedBy) {
+                callback({
+                    msg: "Voucher code already used",
+                    internalErr: true
+                });
+                return 0;
+            }
+
+
             async.parallel([
-                function(callback){
+                function (callback) {
                     result.user.balance += result.voucher.amount;
                     result.user.save(callback);
                 },
-                function(callback){
-                     result.voucher.usedBy =  result.user._id;
-                     result.voucher.save(callback)
+                function (callback) {
+                    result.voucher.usedBy = result.user._id;
+                    result.voucher.save(callback)
                 },
-                function(callback){
+                function (callback) {
                     var Transaction = {
-                        transType : 'voucher',
+                        transType: 'voucher',
                         status: 'Completed',
                         amount: amount,
                         userId: result.user._id,
                         balance: result.user.balance,
                         voucher: result.voucher._id
-                     }
+                    }
 
-                     Transaction(Transaction).save(callback);
+                    Transaction(Transaction).save(callback);
 
                 }
             ], callback);
-            
+
         });
     },
     saveTransaction: function (data, callback) {
@@ -257,7 +280,6 @@ var model = {
             }
         });
     },
-
     buyCoins: function (coinData, callback) {
         //console.log();
         var transData = {};
@@ -362,9 +384,26 @@ var model = {
                     });
                 });
 
+                player.totalPotAmt = winAmount;
                 if (winAmount >= player.totalAmount) {
                     player.totalAmount = winAmount - player.totalAmount;
                     Transaction.tableWonAmount(player, callback);
+                } else if (winAmount > 0) {
+                   
+                    async.waterfall([
+                        function (callback) {
+                            Transaction.tableLostAmount(player, function (err) {
+                                callback(err);
+                            });
+                        },
+                        function (callback) {
+                            player.totalAmount = winAmount;
+                            Transaction.tableWonAmount(player, function (err) {
+                                callback(err);
+                            });
+                        }
+                    ], callback);
+
                 } else {
                     player.totalAmount = player.totalAmount - winAmount;
                     Transaction.tableLostAmount(player, callback);
@@ -384,8 +423,13 @@ var model = {
         var transData = {};
         var transStatus = "tableWon";
         var transAmt;
-        transData.amount = data.totalAmount;
+
         transData.transType = "tableWon";
+        var rackAmt = (data.totalPotAmt * 5) / 100;
+        data.totalAmount = data.totalAmount - rackAmt;
+        transData.amount = data.totalAmount;
+        console.log("total amount", transData.amount);
+        console.log("rack amount", rackAmt);
         // var accessToken = data.accessToken;
         // if (parseInt(transAmt) == NaN) {
         //     callback("Enter Valid Amount");
@@ -396,24 +440,15 @@ var model = {
         }).exec(function (err, userData) {
 
             if (!_.isEmpty(userData)) {
-                Transaction.balance = userData.balance;
+                transData.balance = userData.balance;
                 async.parallel({
                     transaction: function (callback) {
                         transData.userId = userData._id;
-                        if (!transData._id) {
-                            Transaction.saveData(transData, function (err, data) {
-                                callback(err, data);
-                            });
-                        } else {
-                            Transaction.findOneAndUpdate({
-                                userId: userData._id,
-                                _id: data.transId
-                            }, {
-                                $inc: {
-                                    amount: transAmt
-                                }
-                            });
-                        }
+
+                        Transaction.saveData(transData, function (err, data) {
+                            callback(err, data);
+                        });
+
                     },
                     balance: function (callback) {
                         var finalAmount = parseInt(userData.balance) + parseInt(data.totalAmount);
@@ -430,8 +465,18 @@ var model = {
                                 buyInAmt: data.totalAmount
                             }
                         }).exec(callback)
+                    },
+                    rackAmt: function (callback) {
+                        User.findOneAndUpdate({
+                            accessLevel: 'Admin'
+                        }, {
+                            $inc: {
+                                balance: rackAmt
+                            }
+                        }, callback)
                     }
                 }, function (err, result) {
+                    console.log('......................', err, result);
                     if (err) {
                         callback(err);
                     } else {

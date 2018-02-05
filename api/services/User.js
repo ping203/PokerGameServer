@@ -73,7 +73,7 @@ var schema = new Schema({
     type:{
         type: String,
         enum: ['Normal','Other']
-    }
+    },
     // googleAccessToken: String,
     // googleRefreshToken: String,
     // oauthLogin: {
@@ -83,11 +83,11 @@ var schema = new Schema({
     //     }],
     //     index: true
     // },
-    // accessLevel: {
-    //     type: String,
-    //     default: "User",
-    //     enum: ['User', 'Admin']
-    // }
+    accessLevel: {
+        type: String,
+        default: "User",
+        enum: ['User', 'Admin']
+    }
 });
 
 schema.plugin(deepPopulate, {
@@ -120,6 +120,15 @@ var model = {
                 callback(err, "Registered Successfully");
             }
         });
+    },
+    createUser: function (user, callback) {
+        user.password = md5(user.password);
+        if (user._id) {
+            user.isNew = false;
+        } 
+        user = new this(user);
+       
+        user.save(callback);
     },
     login: function (user, callback) {
         var Model = this;

@@ -45,12 +45,11 @@ var exports = _.cloneDeep(require("sails-wohlig-service")(schema));
 var model = {
     createDealer: function (dealer, callback) {
         dealer.password = md5(dealer.password);
-        
-        dealer = new this(dealer);
-        if(dealer._id){
+        if (dealer._id) {
             dealer.isNew = false;
-        }
-        
+        }  
+        dealer = new this(dealer);
+       
         dealer.save(callback);
     },
     login: function (dealer, callback) {
