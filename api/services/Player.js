@@ -369,6 +369,11 @@ var model = {
                 Pot.find({
                     table: data.tableId
                 }).exec(callback);
+            },
+            config: function(callback){
+                Config.findOne({
+                    name:'rackRate' 
+                }).exec(callback);
             }
         }, function (err, data) {
             if (err) {
@@ -776,9 +781,9 @@ var model = {
                                         tableLeft = true;
                                     }
 
-                                    if (!p.isActive && isActive) {
-                                        payBigBlind = true;
-                                    }
+                                    // if (!p.isActive && isActive) {
+                                    //     payBigBlind = true;
+                                    // }    
                                     //var buyInAmt = p.buyInAmt - p.totalAmount;
                                     // if (p.tableLeft) {
                                     //     async.waterfall([
@@ -927,7 +932,10 @@ var model = {
 
                 Player.remove({
                     table: data.tableId,
-                    tableLeft: true
+                    tableLeft: true,
+                    // isSmallBlind:false,
+                    // isBigBlind:false,
+                    // isDealer:false 
                 }).exec(function (err, data) {
                     callback(err, dealer);
                 });

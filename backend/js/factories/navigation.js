@@ -36,7 +36,12 @@ myApp.factory('NavigationService', function ($http) {
         classis: "active",
         sref: "#!/page/viewTable//",
         icon: "phone"
-    },
+    },{
+        name: "Configs",
+        classis: "active",
+        sref: "#!/page/editConfig//",
+        icon: "phone"
+    }
     
 ];
 

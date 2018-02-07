@@ -1,0 +1,46 @@
+{
+    "title": "Edit Config",
+    "name": "Config",
+    "jsonPage": "viewConfig",
+    "desciption": "",
+    "pageType": "edit",
+    "urlFields": ["_id"],
+    "fields": [{
+        "name": "Rack Rate",
+        "type": "text",
+        "tableRef": "value",
+        "placeholder": "Enter Rack Rate",
+        "id": "rackrate",
+        "validation": ["required", "trim", "unique"],
+        "url": ""
+    }],
+    "action": [{
+        "name": "submit",
+        "action": "submitConfig",
+        "stateName": {
+            "page": "page",
+            "json": {
+                "id": "editConfig"
+            }
+        }
+    }, {
+        "name": "cancel",
+        "sideMenuRedirect": true,
+        "stateName": {
+            "page": "page",
+            "json": {
+                "id": "viewConfig"
+            }
+        }
+    }],
+    "apiCall": {
+        "url": "Config/setConfig",
+        "params": "_id"
+    },
+    "preApi": {
+        "url": "Config/getConfig",
+        "params": "_id"
+    },
+    "disableToView":true 
+
+}

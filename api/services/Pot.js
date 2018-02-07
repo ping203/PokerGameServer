@@ -59,35 +59,75 @@ var model = {
                 table.currentRoundAmt = [data];
             }
             table.save(function (err, data) {
-               // console.log(err);
+                // console.log(err);
                 callback(err, data);
             });
         });
     },
     declareWinner: function (allData, callback) {
+        var activePlayers = _.map(allData.players, 'user');
+        var winnerPots = [];
+        _.each(allData.pots, function (p, key) {
+            if (key == 0) {
+                p['name'] = 'Main Pot'
+            } else {
+                p['name'] = 'Side Pot ' + key;
+            }
+        });
+
+        var history = {
+            activePlayers: activePlayers,
+            potWinners: winnerPots
+        }
+        var tableId = allData.players[0].table;
         async.concat(allData.pots, function (p, callback) {
             var players = _.uniqBy(p.players, "playerNo");
-           // console.log("players", players);
+            // console.log("players", players);
             var playerNos = _.map(players, "playerNo");
-           // console.log("playerNos ", playerNos);
+            // console.log("playerNos ", playerNos);
             // remove players not in pot and fold
             var playerData = _.filter(allData.players, function (p) {
-              //  console.log("p.playerNo", p.playerNo, _.indexOf(playerNos, p.playerNo));
+                //  console.log("p.playerNo", p.playerNo, _.indexOf(playerNos, p.playerNo));
                 if (_.indexOf(playerNos, p.playerNo) == -1) {
                     return false;
                 } else {
                     return true;
                 };
             });
-           // console.log("playerData ", playerData);
+            var winnerPlayer = [];
+            winnerPots.push({
+                winnerPlayer: winnerPlayer,
+                potName: p.name
+            });
+
+            // console.log("playerData ", playerData);
             var potPlayers = _.cloneDeep(playerData);
+
             CommunityCards.findWinner(potPlayers, allData.communityCards, function (err, finalVal) {
                 if (err) {
                     callback(err);
                 } else {
                     //console.log(potPlayers);
+                    potPlayers = _.map(potPlayers, function (p) {
+                        var playerData = {
+                            playerId: p._id,
+                            winnigCards: p.winningCards,
+                            winRank: p.winRank,
+                            allCards: p.allCards,
+                            user: p.user
+                        };
+                        console.log("winnerPots.winnerPlayer ", winnerPots);
+                        if (p.winner) {
+                            winnerPlayer.push(p.user);
+                            playerData.winner = p.winner
+                        }
+
+                        return playerData;
+                    });
                     p.winner = potPlayers;
                     p.save(callback);
+
+
                     // Player.blastSocketWinner({
                     //     winners: data.players,
                     //     communityCards: data.communityCards
@@ -104,7 +144,20 @@ var model = {
             } else {
                 //console.log("concat data", data);
                 allData.pots = data;
-                Transaction.makePotTransaction(allData, callback);
+                async.parallel([function (callback) {
+                    Table.update({
+                        _id: tableId
+                    }, {
+                        $push: {
+                            history: {
+                                $each: [history],
+                                $slice: 5
+                            }
+                        }
+                    }).exec(callback);
+                }, function (callback) {
+                    Transaction.makePotTransaction(allData, callback);
+                }], callback);
             }
         });
     },
@@ -118,10 +171,10 @@ var model = {
                 callback(err)
             });
         }, function (callback) {
-            Pot.addCurrentRoundAmt(data, function(err, data){
-                  callback(err);
+            Pot.addCurrentRoundAmt(data, function (err, data) {
+                callback(err);
             });
-        }, function(callback){
+        }, function (callback) {
             Player.allInCheck(currentPlayer, callback)
         }], callback);
     },
@@ -173,7 +226,7 @@ var model = {
         //     playerAmount.push(Pot.getAmountForPlayer(allData.pots, p.playerNo, round));
         // });
 
-       // console.log("playerAmount", playerAmount);
+        // console.log("playerAmount", playerAmount);
         //all have equal amounts and none of them has sone AllIn
         if (_.uniq(playerAmount).length == 1 && allInPlayerAmount.length == 0) {
             amountStatus = true;
@@ -212,7 +265,7 @@ var model = {
         var tableInfo = allData.table;
         //var PlayersInfo = allData.players;
         var potsInfo = allData.pots;
-       // console.log(allData);
+        // console.log(allData);
         //current Player
         var PlayersInfo = _.each(allData.players, function (p) {
             return p.isActive && !p.isFold
@@ -250,7 +303,7 @@ var model = {
             potMaxLimitObj = _.maxBy(pot.players, "amount");
 
 
-           // console.log("potMaxLimit1", potMaxLimit);
+            // console.log("potMaxLimit1", potMaxLimit);
             // for new round take maximum amount from previous round
             if (!potMaxLimitObj) {
                 // var prvstatus = Table.getPrvStatus(status);
@@ -349,22 +402,22 @@ var model = {
         }
 
         //allInAmount = allInAmount - ;
-       // console.log("allInAmount", allInAmount);
+        // console.log("allInAmount", allInAmount);
 
         var currentRoundAmt = _.find(allData.table.currentRoundAmt, function (p) {
             return p.playerNo == currentPlayer.playerNo;
-        }) ;
-   
+        });
+
         var currentRoundPaidAmt = 0;
-        if(currentRoundAmt){
-            currentRoundPaidAmt =  currentRoundAmt.amount;  
+        if (currentRoundAmt) {
+            currentRoundPaidAmt = currentRoundAmt.amount;
         }
         //return data
         allData.tableStatus = status;
         allData.currentPlayer = currentPlayer;
         allData.callAmount = callAmount;
         allData.allInAmount = allInAmount;
-       allData.currentRoundPaidAmt = currentRoundPaidAmt;
+        allData.currentRoundPaidAmt = currentRoundPaidAmt;
         //finalData.potsInfo = potsInfo;
 
         callback(null, allData);
@@ -373,12 +426,12 @@ var model = {
     addAmtToPot: function (data, callback) {
         var pots = data.pots;
         var amountTobeAdded = data.amountTobeAdded;
-       // console.log("amountTobeAdded", amountTobeAdded);
+        // console.log("amountTobeAdded", amountTobeAdded);
         async.eachOfSeries(pots, function (item, key, callback) {
             var player = {};
             var deductAmt = 0;
             var payAmt = item.payableAmt;
-           // console.log("payableAmt ", item, key);
+            // console.log("payableAmt ", item, key);
             ///////////////////////////////////
             // handle if someone has done allIn before with lesser amount
             //   amountTobeAdded = amountTobeAdded - payAmt;
@@ -389,7 +442,7 @@ var model = {
             var allInPlayer = _.filter(data.players, function (p) {
                 return p.isActive && !p.isFold && p.isAllIn && p.playerNo != data.currentPlayer.playerNo
             });
-           // console.log("allInPlayer...........", allInPlayer);
+            // console.log("allInPlayer...........", allInPlayer);
             _.each(allInPlayer, function (ap) {
                 paidAllInAmt = 0;
                 players = _.filter(item.players, function (p) {
@@ -416,7 +469,7 @@ var model = {
             //add all the remaining money if is greater than payable money
 
             if (key == (pots.length - 1) && amountTobeAdded > payAmt) {
-               // console.log("(pots.length - 1) ", (pots.length - 1), "key ", key);
+                // console.log("(pots.length - 1) ", (pots.length - 1), "key ", key);
                 payAmt = amountTobeAdded;
             }
 
@@ -500,7 +553,7 @@ var model = {
         var potData = {};
         potData.type = "side";
         potData.table = pot.table;
-       // console.log("inside splitPot");
+        // console.log("inside splitPot");
         Pot.createPot(potData, function (err, newPot) {
             if (newPot) {
                 var playerIndex = _.findIndex(pot.players, function (p) {
@@ -522,7 +575,7 @@ var model = {
                     // } else {
                     if (item.amount > amount) {
                         var finalAmount = item.amount - amount;
-                       // console.log("item.amount", item.amount);
+                        // console.log("item.amount", item.amount);
                         //console.log("amount", amount);
                         //console.log("finalAmount", finalAmount);
                         async.parallel([
@@ -560,7 +613,7 @@ var model = {
         var tableId = data.table;
         var playerNo = data.playerNo;
         var originalAmt = parseInt(amount);
-        
+
         //  var action = data.action;
         async.waterfall([
             function (callback) {
@@ -581,11 +634,11 @@ var model = {
                     data.amountTobeAdded = data.allInAmount;
                     break;
                 case 'raise':
-                     amount = parseInt(amount);
-                     amount -= data.currentRoundPaidAmt; 
+                    amount = parseInt(amount);
+                    amount -= data.currentRoundPaidAmt;
                     data.amountTobeAdded = amount;
                     if (amount > data.allInAmount) {
-                       // originalAmt = data.allInAmount;
+                        // originalAmt = data.allInAmount;
                         data.amountTobeAdded = data.allInAmount;
                     }
                     break;

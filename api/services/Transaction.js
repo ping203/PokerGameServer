@@ -91,7 +91,9 @@ var model = {
                 }).exec(callback);
             }
         }, function (err, result) {
+            console.log("result...", result);
             if (_.isEmpty(result.user)) {
+                console.log("inside empty");
                 callback({
                     msg: "Please login first.",
                     internalErr: true
@@ -116,10 +118,11 @@ var model = {
                 });
                 return 0;
             }
+
             player = result.players[player];
             player.buyInAmt -= amount;
             result.user.balance -= amount;
-            result.dealer.amount += amount;
+            result.dealer.balance += amount;
             var transactionData = {
                 transType: 'tip',
                 status: 'Completed',
@@ -129,19 +132,24 @@ var model = {
             }
             async.parallel([
                 function (callback) {
+                    console.log("player",player);
                     player.save(callback)
                 },
                 function (callback) {
+                    console.log("user", result.user);
                     result.user.save(callback);
                 },
                 function (callback) {
+                    console.log("dealer",result.dealer);     
                     result.dealer.save(callback);
                 },
                 function (callback) {
-                    Transaction = new Transaction(transactionData);
-                    Transaction.save(callback);
+                    console.log("Transaction",result.dealer);     
+                    TransactionData = new Transaction(transactionData);
+                    TransactionData.save(callback);
                 }
             ], function (err, result) {
+                console.log("err", err, "result ", result);
                 Table.blastSocket(data.tableId, {
                     action: "tip",
                     amount: amount
@@ -199,7 +207,7 @@ var model = {
                     result.voucher.save(callback)
                 },
                 function (callback) {
-                    var Transaction = {
+                    var TransactionData = {
                         transType: 'voucher',
                         status: 'Completed',
                         amount: amount,
@@ -208,7 +216,7 @@ var model = {
                         voucher: result.voucher._id
                     }
 
-                    Transaction(Transaction).save(callback);
+                    Transaction(TransactionData).save(callback);
 
                 }
             ], callback);
@@ -385,6 +393,11 @@ var model = {
                 });
 
                 player.totalPotAmt = winAmount;
+                player.rackRate = 5;
+                if(allData.config){
+                    player.rackRate =  allData.config.value;
+                }
+                
                 if (winAmount >= player.totalAmount) {
                     player.totalAmount = winAmount - player.totalAmount;
                     Transaction.tableWonAmount(player, callback);
@@ -425,7 +438,8 @@ var model = {
         var transAmt;
 
         transData.transType = "tableWon";
-        var rackAmt = (data.totalPotAmt * 5) / 100;
+
+        var rackAmt = (data.totalPotAmt * parseInt(data.rackRate)) / 100;
         data.totalAmount = data.totalAmount - rackAmt;
         transData.amount = data.totalAmount;
         console.log("total amount", transData.amount);

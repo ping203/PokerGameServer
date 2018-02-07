@@ -66,7 +66,24 @@ var schema = new Schema({
         amount: {
             type: Number
         }
-    }]
+    }],
+    history: {
+            type: [{
+                activePlayers: [{
+                    type: Schema.Types.ObjectId,
+                    ref: 'User'
+                }],
+                potWinners: [{
+                    winnerPlayer: [{
+                        type: Schema.Types.ObjectId,
+                        ref: 'User'
+                    }],
+                    potName: String
+                }]
+            }],
+        default: []
+        }
+
 });
 
 schema.plugin(deepPopulate, {});
@@ -80,7 +97,7 @@ var model = {
         var requiredData = Player.requiredData();
         this.find({}, requiredData.table).exec(callback);
     },
-    
+
     makePlayerInactive: function (data, callback) {
         console.log("makePlayerInactive ", data);
         async.parallel({
@@ -266,7 +283,7 @@ var model = {
     },
 
     addUserToTable: function (data, callback) {
-      //  console.log(data);
+        //  console.log(data);
 
 
         // sails.sockets.join(data.socketId, 'room'+ data.tableId , function(err, data1){
@@ -320,7 +337,7 @@ var model = {
                 playerIndex = _.findIndex(result.players, function (p) {
                     return (p.user + "" == user._id + "" && p.table + "" == data.tableId + "" && !p.tableLeft);
                 });
-               // console.log(playerAdded);
+                // console.log(playerAdded);
                 // if (playerAdded) {
 
                 //     playerIndex = _.findIndex(table.activePlayer, function (p) {
@@ -328,7 +345,7 @@ var model = {
                 //     });
                 // }
 
-               // console.log("playerIndex ", playerIndex);
+                // console.log("playerIndex ", playerIndex);
                 //already exists
                 if (playerIndex >= 0) {
                     console.log("Player Already Added");
@@ -374,10 +391,10 @@ var model = {
                     player.autoRebuyAmt = player.buyInAmt;
                 }
 
-                async.waterfall([ function (callback) {
+                async.waterfall([function (callback) {
                     Player.saveData(player, function (err, player) {
                         if (err) {
-                           
+
                             callback(err);
                         } else {
                             if (_.isEmpty(result.CommunityCards)) {
@@ -397,7 +414,7 @@ var model = {
                                 }, function (err, data1) {
                                     Table.blastAddPlayerSocket(table._id);
                                     callback(err, player);
-                                   // Table.connectSocket(table, data.socketId, user, player, callback);
+                                    // Table.connectSocket(table, data.socketId, user, player, callback);
                                 });
                             } else {
                                 Table.blastAddPlayerSocket(table._id);
@@ -613,7 +630,7 @@ var model = {
                 _.remove(allData.players, function (p) {
                     return p.tableLeft;
                 });
-               // console.log("allData.players ", allData.players);
+                // console.log("allData.players ", allData.players);
                 _.each(players, function (p) {
                     sails.sockets.broadcast(p.socketId, "newGame", {
                         data: allData

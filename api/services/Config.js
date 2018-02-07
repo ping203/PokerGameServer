@@ -13,7 +13,7 @@ var MaxImageSize = 1600;
 var schema = new Schema({
     name: String,
     content: String,
-    values: [String]
+    value: String
 });
 
 // var client = new Twitter({
@@ -39,6 +39,25 @@ var models = {
             }
         });
         return arr;
+    },
+    getConfig: function (data, callback) {
+        Config.findOne({
+            name: 'rackRate'
+        }).exec(callback);
+
+    },
+    setConfig: function (data, callback) {
+        console.log("data", data);
+        Config.findOneAndUpdate({
+            name: data.name
+        }, {
+            $set: {
+                value: data.value
+            }
+        }, {
+            new: true
+        }, callback);
+
     },
     checkRestrictedDelete: function (Model, schema, data, callback) {
 
@@ -324,6 +343,7 @@ var models = {
     generateExcel: function (name, found, res) {
         // name = _.kebabCase(name);
         var excelData = [];
+        console.log("found ", found.length);
         _.each(found, function (singleData) {
             var singleExcel = {};
             _.each(singleData, function (n, key) {
@@ -337,6 +357,7 @@ var models = {
         var folder = "./.tmp/";
         var path = name + "-" + moment().format("MMM-DD-YYYY-hh-mm-ss-a") + ".xlsx";
         var finalPath = folder + path;
+        //console.log(path);
         fs.writeFile(finalPath, xls, 'binary', function (err) {
             if (err) {
                 res.callback(err, null);

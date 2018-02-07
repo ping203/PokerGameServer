@@ -304,7 +304,7 @@ var model = {
             } else if (data) {
                 callback(null, data);
             } else {
-                callback("No Data Found", data);
+                callback("Please Login First.", data);
             }
         });
     },
