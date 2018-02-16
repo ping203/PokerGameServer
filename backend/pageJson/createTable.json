@@ -65,6 +65,14 @@
         "id": "timeoutTime",
         "validation": ["required"],
         "url": ""
+    },{
+        "name": "Rake Rate",
+        "type": "text",
+        "tableRef": "rakeRate",
+        "placeholder": "Enter Rake Rate",
+        "id": "rakeRate",
+        "validation": ["required"],
+        "url": ""
     }],
     "action": [{
         "name": "submit",

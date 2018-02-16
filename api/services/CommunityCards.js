@@ -74,13 +74,13 @@ var model = {
             _.each(communityCards, function (commu) {
                 player.allCards.push(commu.cardValue);
             });
-            
+
             player.hand = Hand.solve(player.allCards);
             console.log("hand>>>>>>>>>>>>>>> ", player.hand);
             player.winName = player.hand.name;
             var winningCards = player.hand.cards;
             player.winningCards = [];
-            _.each(winningCards, function(c){
+            _.each(winningCards, function (c) {
                 player.winningCards.push(c.value + c.suit);
             });
             player.descr = player.hand.descr;
@@ -210,20 +210,22 @@ var model = {
         setTimeout(function (tableId) {
             Player.newGame({
                 tableId: tableId
-            }, function(){});
+            }, function () {});
         }, 5 * 1000, tableId);
     },
     setTimeOut: function (tableId, playerNo) {
         Table.findOne({
             _id: tableId
         }).exec(function (err, table) {
-            console.log("table.timeoutTime ", table.timeoutTime);
+          
             setTimeout(function (tableId, playerNo, timeout) {
+                console.log("tableId>>>>>>>>>>>> ", tableId , "playerNo>>>>>>>>> ", playerNo);
                 async.parallel({
                     player: function (callback) {
                         Player.findOne({
                             table: tableId,
-                            playerNo: playerNo
+                            playerNo: playerNo,
+                           
                         }).exec(callback);
                     }
                     // table: function (callback) {
@@ -235,13 +237,29 @@ var model = {
                     if (err) {
                         console.log(err);
                     } else {
-
-                        if (data && data.player && !moment(data.player.updatedAt).isAfter(moment().subtract(timeout, 'seconds'))) {
-                            Player.fold({
-                                tableId: tableId,
-                                accessToken: 'fromSystem'
-                            }, function () {});
-                        }
+                     
+                        if (data && data.player && !moment(data.player.updatedAt).isAfter(moment().subtract(timeout, 'seconds')) && data.player.isTurn) {
+                               var tableLeft = false;
+                                if(data.player.autoFoldNo == 1){
+                                    tableLeft = true;  
+                                }
+                                Player.fold({
+                                    tableId: tableId,
+                                    accessToken: 'fromSystem'
+                                }, function (err) {
+                                    Player.update({
+                                        _id: data.player._id
+                                    }, {
+                                        $inc: {
+                                            autoFoldNo: 1
+                                        },
+                                        $set: {
+                                            tableLeft: tableLeft
+                                        }
+                                    }).exec(function () {});
+                                });
+                            
+                        } 
                     }
                 });
                 // Player.findOne({

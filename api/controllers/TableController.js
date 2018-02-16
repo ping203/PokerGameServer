@@ -23,6 +23,9 @@ var controller = {
         sails.sockets.blast("Update", {
             name: "mansi"
         });
+    },
+    tableHistory: function(req, res){
+      Table.tableHistory(req.body, res.callback);
     }
 };
 module.exports = _.assign(module.exports, controller);

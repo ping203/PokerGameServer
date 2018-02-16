@@ -34,6 +34,25 @@ var exports = _.cloneDeep(require("sails-wohlig-service")(schema));
 var model = {
     createPot: function (data, callback) {
         var Model = this;
+        Pot.getMainPot(data.table, function(err, pot){
+            if (err) {
+                callback(err);
+            } else {
+                if (_.isEmpty(pot)) {
+                    console.log("pot created");
+                    Model.saveData(data, function(err){
+                        console.log("after");
+                              callback(err);
+                    });
+                } else {
+                    callback(err, data);
+                }
+            }
+        });
+        
+    },
+    createSidePot: function(data, callback){
+        var Model = this;
         Model.saveData(data, callback);
     },
     getMainPot: function (tableId, callback) {
@@ -97,7 +116,8 @@ var model = {
             var winnerPlayer = [];
             winnerPots.push({
                 winnerPlayer: winnerPlayer,
-                potName: p.name
+                potName: p.name,
+                amount: p.totalAmount
             });
 
             // console.log("playerData ", playerData);
@@ -114,11 +134,12 @@ var model = {
                             winnigCards: p.winningCards,
                             winRank: p.winRank,
                             allCards: p.allCards,
-                            user: p.user
+                            user: p.user,
+                            playerNo: p.playerNo
                         };
                         console.log("winnerPots.winnerPlayer ", winnerPots);
                         if (p.winner) {
-                            winnerPlayer.push(p.user);
+                            winnerPlayer.push({playerId: p.user, winningCards:p.winningCards});
                             playerData.winner = p.winner
                         }
 
@@ -151,6 +172,7 @@ var model = {
                         $push: {
                             history: {
                                 $each: [history],
+                                $sort: -1,
                                 $slice: 5
                             }
                         }
@@ -260,6 +282,18 @@ var model = {
         return amountStatus;
 
     },
+    gePlayerAmount: function(table , playerNo){
+        var index =    _.findIndex(table.currentRoundAmt, function(p){
+              return p.playerNo == playerNo;
+           });
+        
+           if(index >= 0){
+                return   table.currentRoundAmt[index].amount;
+           }else{
+               return 0;
+           }
+        
+    },
     solveInfo: function (allData, callback) {
         var finalData = {};
         var tableInfo = allData.table;
@@ -338,9 +372,21 @@ var model = {
         });
 
         //console.log(" before callAmount", callAmount);
+        if (!maxAmountObj && _.isEmpty(maxAmountObj)) {
         //console.log(" paidAmt", paidAmt);
+        var maxAmount = 0;
+        var maxAmountObj = _.maxBy(tableInfo.currentRoundAmt, "amount");
+            maxAmount = 0;
+        } else {
+            maxAmount = maxAmountObj.amount;
+        }
         callAmount = callAmount - paidAmt; // deduct already paid amount
-
+        // if(status == 'preFlop' && maxAmount == 0 ){
+        //     callAmount = tableInfo.bigBlind;
+        // }else if( status == 'preFlop' && maxAmount < tableInfo.bigBlind){
+                      
+        //     callAmount = tableInfo.bigBlind - Pot.gePlayerAmount(tableInfo, currentPlayer.playerNo);  
+        // }
         //getPrvStatus
 
         console.log("callAmount", callAmount);
@@ -554,7 +600,7 @@ var model = {
         potData.type = "side";
         potData.table = pot.table;
         // console.log("inside splitPot");
-        Pot.createPot(potData, function (err, newPot) {
+        Pot.createSidePot(potData, function (err, newPot) {
             if (newPot) {
                 var playerIndex = _.findIndex(pot.players, function (p) {
                     return (p.playerNo == currentPlayer.playerNo)
@@ -679,31 +725,33 @@ var model = {
         playerIndex = -1;
         Pot.findOne({
             _id: data.potId
-        }).exec(function (err, Pot) {
+        }).exec(function (err, pot) {
             if (err) {
                 callback(err);
                 return 0;
             }
-            if (Pot.players) {
-                var playerIndex = _.findIndex(Pot.players, function (p) {
+            if (pot.players) {
+                var playerIndex = _.findIndex(pot.players, function (p) {
                     return (p.playerNo == data.playerNo);
                 });
             }
             if (playerIndex >= 0) {
-                Pot.players[playerIndex].amount = parseInt(Pot.players[playerIndex].amount) + parseInt(data.amount);
+                pot.players[playerIndex].amount = parseInt(pot.players[playerIndex].amount) + parseInt(data.amount);
                 //Pot.players[playerIndex].round = data.round;
-                Pot.totalAmount = parseInt(Pot.totalAmount) + parseInt(data.amount);
+                pot.totalAmount = parseInt(pot.totalAmount) + parseInt(data.amount);
             } else {
                 var player = {};
                 player.amount = data.amount;
                 // player.round = data.round;
                 player.playerNo = data.playerNo;
-                Pot.players.push(player);
+                pot.players.push(player);
                 // console.log("...........player",player);
-                Pot.totalAmount = parseInt(Pot.totalAmount) + parseInt(data.amount);
+                console.log("Pot.totalAmount   >>>>>>>>>>>>>>>>>>>>>>.....................",Pot.totalAmount);
+                pot.totalAmount = parseInt(pot.totalAmount) + parseInt(data.amount);
+                
             }
             async.parallel([function (callback) {
-                Pot.save(callback);
+                pot.save(callback);
             }, function (callback) {
                 currentPlayer.totalAmount += parseInt(data.amount);
                 currentPlayer.save(callback);
@@ -715,31 +763,31 @@ var model = {
         playerIndex = -1;
         Pot.findOne({
             _id: data.potId
-        }).exec(function (err, Pot) {
+        }).exec(function (err, pot) {
             if (err) {
                 callback(err);
                 return 0;
             }
-            if (Pot.players) {
-                var playerIndex = _.findIndex(Pot.players, function (p) {
+            if (pot.players) {
+                var playerIndex = _.findIndex(pot.players, function (p) {
                     return (p.playerNo == data.playerNo);
                 });
             }
             if (playerIndex >= 0) {
-                Pot.players[playerIndex].amount = parseInt(Pot.players[playerIndex].amount) - parseInt(data.amount);
+                pot.players[playerIndex].amount = parseInt(pot.players[playerIndex].amount) - parseInt(data.amount);
                 // Pot.players[playerIndex].round = data.round;
-                Pot.totalAmount = parseInt(Pot.totalAmount) - parseInt(data.amount);
+                pot.totalAmount = parseInt(pot.totalAmount) - parseInt(data.amount);
             } else {
                 var player = {};
                 player.amount = data.amount;
                 // player.round = data.round;
                 player.playerNo = data.playerNo;
-                Pot.players.push(player);
+                pot.players.push(player);
                 // console.log("...........player",player);
-                Pot.totalAmount = parseInt(Pot.totalAmount) - parseInt(data.amount);
+                pot.totalAmount = parseInt(pot.totalAmount) - parseInt(data.amount);
             }
             async.parallel([function (callback) {
-                Pot.save(callback);
+                pot.save(callback);
             }, function (callback) {
                 currentPlayer.totalAmount -= parseInt(data.amount);
                 currentPlayer.save(callback);

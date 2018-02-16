@@ -68,30 +68,43 @@ var schema = new Schema({
         }
     }],
     history: {
-            type: [{
-                activePlayers: [{
-                    type: Schema.Types.ObjectId,
-                    ref: 'User'
-                }],
-                potWinners: [{
-                    winnerPlayer: [{
+        type: [{
+            activePlayers: [{
+                type: Schema.Types.ObjectId,
+                ref: 'User'
+            }],
+            potWinners: [{
+                winnerPlayer: [{
+                    playerId: {
                         type: Schema.Types.ObjectId,
                         ref: 'User'
-                    }],
-                    potName: String
-                }]
+                    },
+                    winningCards: []
+                }],
+                potName: String,
+                amount: Number
             }],
+
+        }],
         default: []
-        }
+    },
+    rakeRate : {
+        type: Number,
+        default: 0
+    }
 
 });
 
-schema.plugin(deepPopulate, {});
+schema.plugin(deepPopulate, {
+    "history.potWinners.winnerPlayer.playerId": {
+        select: '_id name'
+    }
+});
 schema.plugin(uniqueValidator);
 schema.plugin(timestamps);
 module.exports = mongoose.model('Table', schema);
 
-var exports = _.cloneDeep(require("sails-wohlig-service")(schema));
+var exports = _.cloneDeep(require("sails-wohlig-service")(schema, 'history.potWinners.winnerPlayer.playerId', 'history.potWinners.winnerPlayer.playerId'));
 var model = {
     getAllTable: function (data, callback) {
         var requiredData = Player.requiredData();
@@ -185,8 +198,12 @@ var model = {
                 var player = _.cloneDeep(removerPlayer)
                 var socketId = removerPlayer.socketId;
                 var removeCheck = false;
+                var playerNo = removerPlayer.playerNo;
+                if (result.table.status == 'beforeStart' && !player.isDealer && !player.isSmallBlind && !player.isBigBlind) {
+                    removeCheck = true;
+                }
 
-                if (result.table.status == 'beforeStart') {
+                if(!player.isActive && !player.tableLeft){
                     removeCheck = true;
                 }
                 //  console.log("removedIds", removedIds);
@@ -195,16 +212,49 @@ var model = {
                 result.table.markModified('activePlayer');
                 //console.log("socketId....", socketId);
                 //console.log("result.table ", String("room" + result.table._id));
-                async.parallel([
-                    function (callback) {
-                        result.table.save(callback);
-                    },
+                async.waterfall([
                     function (callback) {
                         if (removeCheck) {
-                            removerPlayer.remove(callback);
+                            removerPlayer.remove(function (err) {
+                                callback(err);
+                            });
                         } else {
+                            // Player.fold({
+                            //     tableId: data.tableId,
+                            //     accessToken: 'fromSystem',
+                            //     foldPlayer: removerPlayer
+                            // }, function (err) {
+                            //     Player.findOneAndUpdate({
+                            //         table: data.tableId,
+                            //         _id: removerPlayer._id
+                            //     }, {
+                            //         $set: {
+                            //             isFold: false,
+                            //             cards: [],
+                            //             isTurn: false,
+                            //             cardsServe: 0,
+                            //             isLastBlind: false,
+                            //             hasRaised: false,
+                            //             isAllIn: false,
+                            //             hasRaisedd: false,
+                            //             hasChecked: false,
+                            //             hasCalled: false,
+                            //             isSmallBlind: false,
+                            //             isBigBlind: false,
+                            //             totalAmount: 0,
+                            //             hasTurnCompleted: false,
+                            //             tableLeft: true,
+                            //         },
+
+                            //     }, {
+                            //         new: true
+                            //     }, function (err, result) {
+                            //        callback(err); 
+                            //     });
+                            // });
                             removerPlayer.tableLeft = true;
                             removerPlayer.isActive = true;
+                            removerPlayer.cards = [];
                             // removerPlayer.user = "";
                             removerPlayer.save(function (err, foldPlayer) {
                                 if (err) {
@@ -214,11 +264,20 @@ var model = {
                                         tableId: data.tableId,
                                         accessToken: 'fromSystem',
                                         foldPlayer: foldPlayer
-                                    }, callback);
+                                    }, function (err) {
+                                        callback(err);
+                                    });
                                 }
                             });
                         }
                     },
+                    // function (callback) {
+                    //     console.log("inside removePlayer.......");
+                    //     Player.removeInactivePlayer({
+                    //         tableId: data.tableId
+                    //     }, callback);
+                    // }
+
                     // function (callback) {
                     //     Transaction.tableLostAmount(player, callback);
 
@@ -227,11 +286,18 @@ var model = {
                     //     sails.sockets.leave(socketId, String("room" + result.table._id), callback);
                     // }
                 ], function (err, result) {
-                    Table.blastSocket(data.tableId, {
-                        removePlayer: true
+                    Player.removeInactivePlayer({
+                        tableId: data.tableId
+                    }, function (err) {
+                        Table.blastRemoveSocket(data.tableId, {
+                            removePlayer: true,
+                            playerNo: playerNo
+                        });
+                        callback(err);
                     });
+
                     // console.log("err", err);
-                    callback(err, result);
+
                 });
 
 
@@ -283,7 +349,7 @@ var model = {
     },
 
     addUserToTable: function (data, callback) {
-        //  console.log(data);
+          console.log(data);
 
 
         // sails.sockets.join(data.socketId, 'room'+ data.tableId , function(err, data1){
@@ -323,6 +389,7 @@ var model = {
                 var user = result.user;
                 var table = result.table;
                 var playerIndex = -1;
+                var dealerIndex = -1;
                 //check for max players
                 if (table.activePlayer && result.players.length == table.maximumNoOfPlayers) {
                     callback("Room Not Available");
@@ -337,6 +404,12 @@ var model = {
                 playerIndex = _.findIndex(result.players, function (p) {
                     return (p.user + "" == user._id + "" && p.table + "" == data.tableId + "" && !p.tableLeft);
                 });
+
+                smallBlindIndex = _.findIndex(result.players, function (p) {
+                    return p.isDealer;
+                });
+
+              
                 // console.log(playerAdded);
                 // if (playerAdded) {
 
@@ -348,7 +421,7 @@ var model = {
                 // console.log("playerIndex ", playerIndex);
                 //already exists
                 if (playerIndex >= 0) {
-                    console.log("Player Already Added");
+
                     callback("Player Already Added");
                     return 0;
                 }
@@ -361,6 +434,11 @@ var model = {
                     callback("position filled");
                     return 0;
                 }
+                var removePlayer = _.findIndex(result.players, function (p) {
+                    return p.playerNo == data.playerNo
+                });
+
+
                 // Player.find({
                 //     table: data.tableId
                 // }).sort({
@@ -377,13 +455,23 @@ var model = {
                 //         player.playerNo = 1;
                 //     }
                 var player = {};
+                
+                if( parseInt(data.payBigBlind)){
+                    player.payBigBlind = false   
+                }
                 player.user = user._id;
                 player.table = data.tableId;
                 player.playerNo = data.playerNo;
                 player.buyInAmt = data.amount;
                 player.socketId = data.socketId;
                 player.autoRebuy = data.autoRebuy;
-                if (result.table.status != "beforeStart") {
+                player.payBigBlind = data.payBigBlind;
+                if (removePlayer >= 0) {
+                    player.isDealer = result.players[removePlayer].isDealer;
+                    player.isSmallBlind = result.players[removePlayer].isSmallBlind;
+                    player.isBigBlind = result.players[removePlayer].isBigBlind;
+                }
+                if (result.table.status != "beforeStart" || smallBlindIndex != -1) {
                     player.isActive = false;
                 }
 
@@ -392,6 +480,13 @@ var model = {
                 }
 
                 async.waterfall([function (callback) {
+                    Player.remove({
+                        table: data.tableId,
+                        playerNo: data.playerNo
+                    }).exec(function (err) {
+                        callback(err);
+                    });
+                }, function (callback) {
                     Player.saveData(player, function (err, player) {
                         if (err) {
 
@@ -551,24 +646,26 @@ var model = {
                 } else {
                     allData.extra = {};
                 }
-                console.log("Inner blast socket ", tableId);
+                console.log("Inner blast socket winner", tableId);
                 console.log("allData ", allData);
                 // sails.sockets.broadcast("room" + tableId, "showWinner", {
                 //     data: allData
                 // });
-                _.each(allData.players, function (p) {
-                    if (!p.tableLeft) {
-                        sails.sockets.broadcast(p.socketId, "showWinner", {
+                if (allData.table && allData.table.status != 'beforeStart' && allData.table.status != 'serve') {
+                    _.each(allData.players, function (p) {
+                        if (!p.tableLeft) {
+                            sails.sockets.broadcast(p.socketId, "showWinner", {
+                                data: allData
+                            });
+                        }
+                    });
+
+                    _.each(allData.dealer, function (d) {
+                        sails.sockets.broadcast(d.socketId, "showWinner", {
                             data: allData
                         });
-                    }
-                });
-
-                _.each(allData.dealer, function (d) {
-                    sails.sockets.broadcast(d.socketId, "newGame", {
-                        data: allData
                     });
-                });
+                }
             }
         }, true);
     },
@@ -628,7 +725,7 @@ var model = {
                 console.log("allData.extra", allData.extra);
                 var players = _.cloneDeep(allData.players);
                 _.remove(allData.players, function (p) {
-                    return p.tableLeft;
+                    return (p.tableLeft && !p.isDealer && !p.isSmallBlind && !p.isBigBlind);
                 });
                 // console.log("allData.players ", allData.players);
                 _.each(players, function (p) {
@@ -680,6 +777,7 @@ var model = {
                         });
                     }
                 });
+
                 _.each(allData.dealer, function (d) {
                     sails.sockets.broadcast(d.socketId, "Update", {
                         data: allData
@@ -709,6 +807,37 @@ var model = {
 
         return curStatus;
 
+    },
+    blastRemoveSocket: function (tableId, extraData) {
+        Player.getAllDetails({
+            tableId: tableId
+        }, function (err, allData) {
+            // if (!fromUndo) {
+            //     GameLogs.create(function () {});
+            // } else {
+            //     allData.undo = true;
+            // }
+            // if (data && data.newGame) {
+            //     allData.newGame = true;
+            // }
+
+            if (err) {
+                console.log(err);
+            } else {
+                if (extraData) {
+                    allData.extra = extraData;
+                } else {
+                    allData.extra = {};
+                }
+                console.log("remove Player", allData);
+                sails.sockets.blast("removePlayer", {
+                    data: allData
+                });
+                // sails.sockets.broadcast("room" + tableId, "Update", {
+                //     data: allData
+                // });
+            }
+        });
     },
     updateStatus: function (tableId, callback) {
         console.log("updateStatus ", tableId);
@@ -742,6 +871,65 @@ var model = {
                     callback(null);
                 }
             }], callback);
+        });
+    },
+    tableHistory: function (data, callback) {
+        console.log(data);
+        async.parallel({
+            table: function (callback) {
+                Table.findOne({
+                    _id: data.tableId
+                }).deepPopulate("history.potWinners.winnerPlayer.playerId").lean().exec(callback);
+            },
+            user: function (callback) {
+                User.findOne({
+                    accessToken: data.accessToken
+                }).lean().exec(callback);
+            }
+        }, function (err, result) {
+            if (err || _.isEmpty(result.table) || _.isEmpty(result.user)) {
+                callback(err);
+            } else {
+                var messages = [];
+                var games = _.filter(result.table.history, function (h) {
+                    console.log(_.some(h.activePlayers, result.user._id));
+                    return _.some(h.activePlayers, result.user._id);
+                });
+
+                _.each(games, function (g) {
+                    var pots = [];
+
+                    _.each(g.potWinners, function (w) {
+                        console.log("games", w);
+                        var message = '';
+                        var cards = [];
+                        _.each(w.winnerPlayer, function (p, index) {
+                            if (index != 0) {
+                                message += ', ';
+                            }
+                            if (p.playerId._id + "" == result.user._id) {
+                                message += 'You '
+                            } else {
+                                message += p.playerId.name + ' ';
+                            }
+
+
+                            cards.push(p.winningCards);
+                            console.log(cards);
+                        });
+                        message += 'won the ' + w.potName + ' worth ' + w.amount + '.';
+
+                        pots.push({
+                            message: message,
+                            cards: cards
+                        });
+
+                    });
+                    messages.push(pots);
+                });
+                callback(null, messages);
+
+            }
         });
     }
 
