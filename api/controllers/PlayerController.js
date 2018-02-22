@@ -100,6 +100,9 @@
         check: function (req, res) {
             Player.check(req.body, res.callback);
         },
+        makeDealerByDealer: function(req, res){
+            Player.makeDealerByDealer(req.body, res.callback);
+        },
         createTurnSchedule: function () {
             var insterval = '*/15 * * * * *';
             var tableId = 123;

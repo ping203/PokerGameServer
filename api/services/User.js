@@ -87,7 +87,9 @@ var schema = new Schema({
         type: String,
         default: "User",
         enum: ['User', 'Admin']
-    }
+    },
+    socketId: String,
+    table: Schema.Types.ObjectId
 });
 
 schema.plugin(deepPopulate, {
@@ -162,6 +164,45 @@ var model = {
                 }
             }
         );
+    },
+    connectSocket: function (data, callback) {
+        Dealer.update({
+            accessToken: data.accessToken
+        }, {
+            socketId: data.socketId
+        }).exec(callback);
+    },
+    adminLogin: function (admin, callback) {
+        console.log(admin);
+        var Model = this;
+        Model.findOne({
+            mobile: admin.mobile,
+            password: md5(admin.password)
+        }).exec(function (err, data) {
+            console.log("data", data);
+            if (err) {
+                callback(err);
+            } else {
+                if (!_.isEmpty(data)) {
+                    console.log(data);
+                    var accessToken = [uid(16)];
+                    data.accessToken = accessToken;
+                    data.table = admin.tableId;
+                    data.socketId = admin.socketId
+                    data.save(function (err, data) {
+                        if (err) {
+                            callback(err);
+                        } else {
+                            callback(err, {
+                                accessToken: accessToken
+                            });
+                        }
+                    });
+                } else {
+                    callback("Invalid credentials");
+                }
+            }
+        });
     },
     varifyMobile: function (data, callback) {
         var Model = this;

@@ -66,7 +66,9 @@ var schema = new Schema({
         amount: {
             type: Number
         }
-    }],
+    },
+    ],
+    youTubeUrl: String,
     history: {
         type: [{
             activePlayers: [{
@@ -88,7 +90,7 @@ var schema = new Schema({
         }],
         default: []
     },
-    rakeRate : {
+    rakeRate: {
         type: Number,
         default: 0
     }
@@ -203,7 +205,7 @@ var model = {
                     removeCheck = true;
                 }
 
-                if(!player.isActive && !player.tableLeft){
+                if (!player.isActive && !player.tableLeft && !player.isDealer && !player.isSmallBlind && !player.isBigBlind) {
                     removeCheck = true;
                 }
                 //  console.log("removedIds", removedIds);
@@ -349,7 +351,7 @@ var model = {
     },
 
     addUserToTable: function (data, callback) {
-          console.log(data);
+        console.log(data);
 
 
         // sails.sockets.join(data.socketId, 'room'+ data.tableId , function(err, data1){
@@ -409,7 +411,7 @@ var model = {
                     return p.isDealer;
                 });
 
-              
+
                 // console.log(playerAdded);
                 // if (playerAdded) {
 
@@ -455,9 +457,9 @@ var model = {
                 //         player.playerNo = 1;
                 //     }
                 var player = {};
-                
-                if( parseInt(data.payBigBlind)){
-                    player.payBigBlind = false   
+
+                if (parseInt(data.payBigBlind)) {
+                    player.payBigBlind = false
                 }
                 player.user = user._id;
                 player.table = data.tableId;
@@ -648,6 +650,27 @@ var model = {
                 }
                 console.log("Inner blast socket winner", tableId);
                 console.log("allData ", allData);
+                _.each(allData.pots, function (p) {
+                    _.each(p.winner, function (w) {
+                        var winningCards = [];
+                        _.each(w.winningCards, function (c) {
+                            var card = {};
+                            var cardNumber = 0;
+                            var cardNo = _.filter(allData.CommunityCards, function (cc) {
+                                return cc.cardValue == c;
+                            });
+                            if (!_.isEmpty(cardNo)) {
+                                cardNumber = cardNo.cardNo;
+                            } else {
+                                cardNumber = 0;
+                            }
+                            card.value = c;
+                            card.no = cardNumber;
+                            winningCards.push(card);
+                        });
+                        w.winningCards = winningCards;
+                    })
+                });
                 // sails.sockets.broadcast("room" + tableId, "showWinner", {
                 //     data: allData
                 // });
@@ -662,6 +685,12 @@ var model = {
 
                     _.each(allData.dealer, function (d) {
                         sails.sockets.broadcast(d.socketId, "showWinner", {
+                            data: allData
+                        });
+                    });
+                    
+                    _.each(allData.admin, function (a) {
+                        sails.sockets.broadcast(a.socketId, "newGame", {
                             data: allData
                         });
                     });
@@ -694,6 +723,8 @@ var model = {
                 sails.sockets.blast("seatSelection", {
                     data: allData
                 });
+                
+                
                 // sails.sockets.broadcast("room" + tableId, "Update", {
                 //     data: allData
                 // });
@@ -729,6 +760,7 @@ var model = {
                 });
                 // console.log("allData.players ", allData.players);
                 _.each(players, function (p) {
+                    console.log("players  ", p.playerNo);
                     sails.sockets.broadcast(p.socketId, "newGame", {
                         data: allData
                     });
@@ -739,6 +771,12 @@ var model = {
 
                 _.each(allData.dealer, function (d) {
                     sails.sockets.broadcast(d.socketId, "newGame", {
+                        data: allData
+                    });
+                });
+
+                _.each(allData.admin, function (a) {
+                    sails.sockets.broadcast(a.socketId, "newGame", {
                         data: allData
                     });
                 });
@@ -771,15 +809,20 @@ var model = {
                 console.log("allData.extra", allData.extra);
 
                 _.each(allData.players, function (p) {
-                    if (!p.tableLeft) {
-                        sails.sockets.broadcast(p.socketId, "Update", {
-                            data: allData
-                        });
-                    }
+                    // if (!p.tableLeft) {
+                    sails.sockets.broadcast(p.socketId, "Update", {
+                        data: allData
+                    });
+                    //}
                 });
 
                 _.each(allData.dealer, function (d) {
                     sails.sockets.broadcast(d.socketId, "Update", {
+                        data: allData
+                    });
+                });
+                _.each(allData.admin, function (a) {
+                    sails.sockets.broadcast(a.socketId, "Update", {
                         data: allData
                     });
                 });
@@ -856,8 +899,11 @@ var model = {
             var index = _.findIndex(status, function (s) {
                 return s == data.status
             });
-            data.currentRoundAmt = [];
+
             if (index >= 0) {
+                if (status[index + 1] != "beforeStart" && status[index + 1] != "serve" && status[index + 1] != "preFlop") {
+                    data.currentRoundAmt = [];
+                }
                 data.status = status[index + 1];
             }
             async.parallel([function (callback) {

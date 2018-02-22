@@ -3,6 +3,13 @@ var controller = {
     getTushar: function () {
         // Every thing is awesome
     },
+    trial:function(req,res){
+        async.each([1,2,3,4,5], function(data, callback){
+            console.log(data);
+            callback();
+        });
+        res.callback("return");
+    },
     signUp: function (req, res) {
         console.log("inside signUp");
        User.signUp(req.body, res.callback);
@@ -49,6 +56,9 @@ var controller = {
         } else {
             res.callback("Please provide Valid AccessToken", null);
         }
+    },
+    createUser: function(req, res){
+        User.createUser(req.body, res.callback); 
     },
     pdf: function (req, res) {
 
@@ -116,6 +126,12 @@ var controller = {
     },
     getAllMedia: function (req, res) {
         Media.getAllMedia(req.body, res.callback);
+    },
+    adminLogin: function (req, res) {
+        User.adminLogin(req.body, res.callback);
+    },
+    connectSocket: function(req, res){
+        User.connectSocket(req.body, res.callback);
     },
     sendmail: function (req, res) {
         Config.sendEmail("chintan@wohlig.com", "jagruti@wohlig.com", "first email from endgrid", "", "<html><body>dome content</body></html>");

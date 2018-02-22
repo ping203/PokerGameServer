@@ -1,6 +1,11 @@
 var schema = new Schema({
     players: Schema.Types.Mixed,
-    cards: Schema.Types.Mixed
+    cards: Schema.Types.Mixed,
+    pots: Schema.Types.Mixed,
+    status: {
+        type: String,
+        status : ["ok", "hold"]
+    }
 });
 
 schema.plugin(deepPopulate, {});
@@ -10,22 +15,36 @@ module.exports = mongoose.model('GameLogs', schema);
 
 var exports = _.cloneDeep(require("sails-wohlig-service")(schema));
 var model = {
-    create: function (callback) {
+    create: function (tableId, callback) {
         var gameObject = GameLogs();
         async.parallel({
-            players: function () {
-                Player.find({}).lean().exec(function (err, data) {
+            players: function (callback) {
+                Player.find({
+                    table: tableId
+                }).lean().exec(function (err, data) {
                     gameObject.players = data;
-                    gameObject.save(callback);
+                   
                 });
             },
-            cards: function () {
-                CommunityCards.find({}).lean().exec(function (err, data) {
+            cards: function (callback) {
+                CommunityCards.find({
+                    table: tableId
+                }).lean().exec(function (err, data) {
                     gameObject.cards = data;
-                    gameObject.save(callback);
+                    
+                });
+            },
+            pots: function(callback){
+                Pot.find({
+                    table: tableId
+                }).lean().exec(function (err, data) {
+                    gameObject.pots = data;
+                    
                 });
             }
-        }, callback);
+        }, function(err){
+            gameObject.save(callback);
+        });
     },
     undo: function (callback) {
         async.waterfall([

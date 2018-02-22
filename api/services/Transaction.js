@@ -109,7 +109,7 @@ var model = {
             }
 
             var player = _.findIndex(result.players, function (p) {
-                return (p.user + "" - result.user._id + "");
+                return (p.user + "" == result.user._id + "");
             });
             if (player < 0) {
                 callback({
@@ -223,7 +223,7 @@ var model = {
 
         });
     },
-    saveTransaction: function (data, callback) {
+    saveTransaction: function (data, callback) { 
         console.log(data);
         var Model = this;
         var user = data.userId._id;
@@ -394,8 +394,8 @@ var model = {
 
                 player.totalPotAmt = winAmount;
                 player.rackRate = 5;
-                if(allData.config){
-                    player.rackRate =  allData.config.value;
+                if(allData.table){
+                    player.rackRate =  allData.table.rackRate;
                 }
                 
                 if (winAmount >= player.totalAmount) {
@@ -454,7 +454,10 @@ var model = {
         }).exec(function (err, userData) {
 
             if (!_.isEmpty(userData)) {
-                transData.balance = userData.balance;
+                console.log( "tableWonAmount userData", userData);
+               
+                var finalAmount = parseInt(userData.balance) + parseInt(data.totalAmount);
+                transData.balance = finalAmount;
                 async.parallel({
                     transaction: function (callback) {
                         transData.userId = userData._id;
@@ -465,7 +468,7 @@ var model = {
 
                     },
                     balance: function (callback) {
-                        var finalAmount = parseInt(userData.balance) + parseInt(data.totalAmount);
+                      
                         userData.balance = finalAmount;
                         userData.save(function (err, data) {
                             callback(err, data);
@@ -520,11 +523,16 @@ var model = {
         User.findOne({
             _id: data.user
         }).exec(function (err, userData) {
-            Transaction.balance = userData.balance;
+            
+            
             if (!_.isEmpty(userData)) {
+                var finalAmount = parseInt(userData.balance) - parseInt(data.totalAmount);
+                transData.balance = finalAmount;
                 async.parallel({
                     transaction: function (callback) {
                         transData.userId = userData._id;
+                      
+                      
                         if (!transData._id) {
                             Transaction.saveData(transData, function (err, data) {
                                 callback(err, data);
@@ -541,7 +549,7 @@ var model = {
                         }
                     },
                     balance: function (callback) {
-                        var finalAmount = parseInt(userData.balance) - parseInt(data.totalAmount);
+                        
                         userData.balance = finalAmount;
                         userData.save(function (err, data) {
                             callback(err, data);

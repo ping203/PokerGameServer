@@ -211,7 +211,7 @@ var model = {
             Player.newGame({
                 tableId: tableId
             }, function () {});
-        }, 5 * 1000, tableId);
+        }, 10 * 1000, tableId);
     },
     setTimeOut: function (tableId, playerNo) {
         Table.findOne({
@@ -247,6 +247,7 @@ var model = {
                                     tableId: tableId,
                                     accessToken: 'fromSystem'
                                 }, function (err) {
+                                    console.log("function called>>>>>>>");
                                     Player.update({
                                         _id: data.player._id
                                     }, {
@@ -256,7 +257,9 @@ var model = {
                                         $set: {
                                             tableLeft: tableLeft
                                         }
-                                    }).exec(function () {});
+                                    },{new: true}).exec(function (err, data) {
+                                        console.log("document????????????/????? ", data);
+                                    });
                                 });
                             
                         } 

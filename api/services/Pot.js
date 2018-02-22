@@ -34,24 +34,24 @@ var exports = _.cloneDeep(require("sails-wohlig-service")(schema));
 var model = {
     createPot: function (data, callback) {
         var Model = this;
-        Pot.getMainPot(data.table, function(err, pot){
+        Pot.getMainPot(data.table, function (err, pot) {
             if (err) {
                 callback(err);
             } else {
                 if (_.isEmpty(pot)) {
                     console.log("pot created");
-                    Model.saveData(data, function(err){
+                    Model.saveData(data, function (err) {
                         console.log("after");
-                              callback(err);
+                        callback(err, data);
                     });
                 } else {
                     callback(err, data);
                 }
             }
         });
-        
+
     },
-    createSidePot: function(data, callback){
+    createSidePot: function (data, callback) {
         var Model = this;
         Model.saveData(data, callback);
     },
@@ -66,6 +66,7 @@ var model = {
             _id: data.tableId
         }).exec(function (err, table) {
             if (table.currentRoundAmt) {
+                console.log("data........................????????????", data);
                 var player = _.findIndex(table.currentRoundAmt, function (c) {
                     return data.playerNo == c.playerNo
                 });
@@ -74,9 +75,11 @@ var model = {
                 } else {
                     table.currentRoundAmt.push(data);
                 }
+                
             } else {
                 table.currentRoundAmt = [data];
             }
+          
             table.save(function (err, data) {
                 // console.log(err);
                 callback(err, data);
@@ -135,11 +138,15 @@ var model = {
                             winRank: p.winRank,
                             allCards: p.allCards,
                             user: p.user,
-                            playerNo: p.playerNo
+                            playerNo: p.playerNo,
+                            winName: p.winName
                         };
                         console.log("winnerPots.winnerPlayer ", winnerPots);
                         if (p.winner) {
-                            winnerPlayer.push({playerId: p.user, winningCards:p.winningCards});
+                            winnerPlayer.push({
+                                playerId: p.user,
+                                winningCards: p.winningCards
+                            });
                             playerData.winner = p.winner
                         }
 
@@ -226,7 +233,7 @@ var model = {
         var amountRemaining = false;
         var round = allData.table['status'];
         var activePlayers = _.filter(allData.players, function (p) {
-            return !p.isAllIn && p.isActive && !p.isFold
+            return !p.isAllIn && p.isActive && !p.isFold && !p.tableLeft
         });
 
         var allInPlayer = _.filter(allData.players, function (p) {
@@ -282,17 +289,18 @@ var model = {
         return amountStatus;
 
     },
-    gePlayerAmount: function(table , playerNo){
-        var index =    _.findIndex(table.currentRoundAmt, function(p){
-              return p.playerNo == playerNo;
-           });
-        
-           if(index >= 0){
-                return   table.currentRoundAmt[index].amount;
-           }else{
-               return 0;
-           }
-        
+    gePlayerAmount: function (table, playerNo) {
+        var index = _.findIndex(table.currentRoundAmt, function (p) {
+            return p.playerNo == playerNo;
+        });
+        console.log("table.currentRoundAmt ", table.currentRoundAmt);
+
+        if (index >= 0) {
+            return table.currentRoundAmt[index].amount;
+        } else {
+            return 0;
+        }
+
     },
     solveInfo: function (allData, callback) {
         var finalData = {};
@@ -372,19 +380,25 @@ var model = {
         });
 
         //console.log(" before callAmount", callAmount);
+        var maxAmountObj = _.maxBy(allData.table.currentRoundAmt, "amount");
         if (!maxAmountObj && _.isEmpty(maxAmountObj)) {
-        //console.log(" paidAmt", paidAmt);
-        var maxAmount = 0;
-        var maxAmountObj = _.maxBy(tableInfo.currentRoundAmt, "amount");
+            //console.log(" paidAmt", paidAmt);
+            var maxAmount = 0;
+            var maxAmountObj = _.maxBy(tableInfo.currentRoundAmt, "amount");
             maxAmount = 0;
         } else {
             maxAmount = maxAmountObj.amount;
         }
         callAmount = callAmount - paidAmt; // deduct already paid amount
+        if (status == 'preFlop' && maxAmount < tableInfo.bigBlind) {
+
+            callAmount = tableInfo.bigBlind - Pot.gePlayerAmount(tableInfo, currentPlayer.playerNo);
+        }
+        console.log("callAmount ", callAmount, "Pot.gePlayerAmount(tableInfo, currentPlayer.playerNo) ", Pot.gePlayerAmount(tableInfo, currentPlayer.playerNo));
         // if(status == 'preFlop' && maxAmount == 0 ){
         //     callAmount = tableInfo.bigBlind;
         // }else if( status == 'preFlop' && maxAmount < tableInfo.bigBlind){
-                      
+
         //     callAmount = tableInfo.bigBlind - Pot.gePlayerAmount(tableInfo, currentPlayer.playerNo);  
         // }
         //getPrvStatus
@@ -746,9 +760,9 @@ var model = {
                 player.playerNo = data.playerNo;
                 pot.players.push(player);
                 // console.log("...........player",player);
-                console.log("Pot.totalAmount   >>>>>>>>>>>>>>>>>>>>>>.....................",Pot.totalAmount);
+                console.log("Pot.totalAmount   >>>>>>>>>>>>>>>>>>>>>>.....................", Pot.totalAmount);
                 pot.totalAmount = parseInt(pot.totalAmount) + parseInt(data.amount);
-                
+
             }
             async.parallel([function (callback) {
                 pot.save(callback);
