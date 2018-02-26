@@ -68,11 +68,19 @@ var model = {
                     var accessToken = [uid(16)];
                     data.accessToken = accessToken;
                     data.table = dealer.tableId;
-                    data.socketId = dealer.socketId
+                    data.socketId = dealer.socketId;
                     data.save(function (err, data) {
                         if (err) {
                             callback(err);
                         } else {
+
+                            Table.update({
+                                _id : dealer.tableId
+                            }, {
+                                youTubeUrl: dealer.youTubeUrl
+                            }).exec(function(err, data){
+
+                            });
                             callback(err, {
                                 accessToken: accessToken
                             });

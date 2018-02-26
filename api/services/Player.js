@@ -330,15 +330,15 @@ var model = {
                     }
                 }).exec(function (err, data) {
                     var payAmount = 0;
-                    if(isActive){
-                        if(data.isSmallBlind){
+                    if (isActive) {
+                        if (data.isSmallBlind) {
                             payAmount = result.table.smallBlind;
                         }
-                        if(data.isBigBlind){
+                        if (data.isBigBlind) {
                             payAmount = result.table.bigBlind;
                         }
                     }
-                    if(payAmount > 0){
+                    if (payAmount > 0) {
                         var pot = {};
                         pot.playerNo = data.playerNo;
                         pot.tableId = data.table;
@@ -347,14 +347,14 @@ var model = {
                         pot.amount = payAmount;
 
                         Pot.AddToMainPort(pot, data, function (err) {
-                            
+
                             callback(err, data);
                         });
-                    }else{
+                    } else {
                         callback(err, data)
                     }
                     Table.blastSocket(result.table._id);
-                    
+
                 });
             }
         });
@@ -415,7 +415,9 @@ var model = {
                     table: data.tableId
                 }, {
                     isTurn: false
-                },{multi: true}).exec(callback);
+                }, {
+                    multi: true
+                }).exec(callback);
             }
         }, function (err, data) {
             if (err) {
@@ -423,14 +425,14 @@ var model = {
             } else {
                 // console.log("data", data);
                 Pot.declareWinner(data, function (err, data1) {
-                    console.log("inside declareWinner >>>>>>>>>>>" );
+                    console.log("inside declareWinner >>>>>>>>>>>");
                     if (err) {
                         callback(err);
                     } else {
                         Table.blastSocketWinner(tableId);
                         CommunityCards.setNewGameTimeOut(tableId);
                         callback(err);
-                       // GameLogs.create(tableId, callback);
+                        // GameLogs.create(tableId, callback);
                     }
                 });
                 //Check All Player Cards are Placed
@@ -607,7 +609,7 @@ var model = {
                     _id: tableId
                 }, requiredData.table).exec(callback);
             },
-            admin: function(callback){
+            admin: function (callback) {
                 User.find({
                     accessLevel: 'Admin',
                     table: tableId
@@ -702,7 +704,7 @@ var model = {
                             if (maxAmount == 0) {
                                 allData.fromRaised = allData.table.bigBlind;
                             }
-                            var amtToBePaid = allData.fromRaised -  Pot.gePlayerAmount(allData.table,  data.currentPlayer.playerNo);
+                            var amtToBePaid = allData.fromRaised - Pot.gePlayerAmount(allData.table, data.currentPlayer.playerNo);
                             // console.log("allData.fromRaised", allData.fromRaised);
 
 
@@ -718,12 +720,14 @@ var model = {
                                 allData.isCalled = true;
                             }
 
+
+                            var raisedAmt = 0;
                             allData.toRaised = remainingBalance;
 
                             if (allData.toRaised > data.allInAmount) {
-                                allData.toRaised = data.allInAmount;
+                                allData.toRaised = allData.fromRaised + data.allInAmount - amtToBePaid + Pot.gePlayerAmount(allData.table, data.currentPlayer.playerNo);
                             }
-
+                            allData.toRaised = data.toRaisedAmt;
                             if (remainingBalance >= amtToBePaid && allData.fromRaised < allData.toRaised) {
                                 allData.isRaised = true;
                             }
@@ -777,7 +781,9 @@ var model = {
                                 isBigBlind: false,
                                 totalAmount: 0,
                                 isActive: true
-                            },{multi:true}).exec(callback);
+                            }, {
+                                multi: true
+                            }).exec(callback);
                         },
                         function (callback) {
                             Table.update({
@@ -1057,11 +1063,14 @@ var model = {
                                                 pot.tableId = tableId;
                                                 //console.log(, pot);
                                                 pot.type = 'main';
-
+                                                if (pot.amount > result.buyInAmt) {
+                                                    pot.amount = p.buyInAmt;
+                                                }
                                                 Pot.AddToMainPort(pot, result, function (err) {
                                                     console.log("err>>>>>>>>", err);
                                                     callback(err);
                                                 });
+
 
                                             } else {
                                                 callback(err);
@@ -2055,7 +2064,7 @@ var model = {
                                     Table.blastSocket(tableId);
                                 });
                             });
-                        }else{
+                        } else {
                             callback("No one has a turn.");
                         }
                     }
@@ -2120,7 +2129,7 @@ var model = {
                                             },
                                             Player.makeSmallBlind,
                                             function (data, callback) {
-                                               
+
                                                 Player.nextInPlay(data, callback, true);
                                             },
                                             Player.makeBigBlind,
@@ -3102,7 +3111,8 @@ var model = {
             maximumNoOfPlayers: 1,
             status: 1,
             currentRoundAmt: 1,
-            timeoutTime: 1
+            timeoutTime: 1,
+            youTubeUrl: 1
         };
         data.player = {
             playerNo: 1,

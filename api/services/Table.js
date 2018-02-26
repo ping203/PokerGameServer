@@ -66,9 +66,11 @@ var schema = new Schema({
         amount: {
             type: Number
         }
+    }, ],
+    youTubeUrl: {
+        type: String,
+        default: ""
     },
-    ],
-    youTubeUrl: String,
     history: {
         type: [{
             activePlayers: [{
@@ -688,7 +690,7 @@ var model = {
                             data: allData
                         });
                     });
-                    
+
                     _.each(allData.admin, function (a) {
                         sails.sockets.broadcast(a.socketId, "newGame", {
                             data: allData
@@ -723,8 +725,8 @@ var model = {
                 sails.sockets.blast("seatSelection", {
                     data: allData
                 });
-                
-                
+
+
                 // sails.sockets.broadcast("room" + tableId, "Update", {
                 //     data: allData
                 // });

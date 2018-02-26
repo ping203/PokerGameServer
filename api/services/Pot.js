@@ -75,11 +75,11 @@ var model = {
                 } else {
                     table.currentRoundAmt.push(data);
                 }
-                
+
             } else {
                 table.currentRoundAmt = [data];
             }
-          
+
             table.save(function (err, data) {
                 // console.log(err);
                 callback(err, data);
@@ -302,6 +302,20 @@ var model = {
         }
 
     },
+    toRaisedAmt: function (amt, playerInfo,tableInfo, callback) {
+      var buyInAmts = _.filter(playerInfo, function (p) {
+              return p.buyInAmt == amt
+        });
+      var amts =  _.map(buyInAmts, function(p){
+            return p.buyInAmt - p.totalAmount + Pot.gePlayerAmount(tableInfo, p.playerNo);
+         });
+
+         amts.sort(function (a, b) {
+            return b - a
+        });
+                    
+        return amts[0];
+    },
     solveInfo: function (allData, callback) {
         var finalData = {};
         var tableInfo = allData.table;
@@ -454,10 +468,12 @@ var model = {
             return b - a
         });
         var allInAmount = 0;
-
+        var toRaisedAmt = 0;    
         if (buyInAmts[1] < currentPlayer.buyInAmt) {
+            toRaisedAmt = Pot.toRaisedAmt(buyInAmts[1], PlayersInfo, tableInfo);
             allInAmount = buyInAmts[1] - currentPlayer.totalAmount;
         } else {
+            toRaisedAmt = currentPlayer.buyInAmt - currentPlayer.totalAmount +  Pot.gePlayerAmount(allData.table, currentPlayer.playerNo);
             allInAmount = currentPlayer.buyInAmt - currentPlayer.totalAmount;
         }
 
@@ -473,6 +489,7 @@ var model = {
             currentRoundPaidAmt = currentRoundAmt.amount;
         }
         //return data
+        allData.toRaisedAmt = toRaisedAmt;
         allData.tableStatus = status;
         allData.currentPlayer = currentPlayer;
         allData.callAmount = callAmount;
@@ -697,6 +714,7 @@ var model = {
                     amount = parseInt(amount);
                     amount -= data.currentRoundPaidAmt;
                     data.amountTobeAdded = amount;
+                    
                     if (amount > data.allInAmount) {
                         // originalAmt = data.allInAmount;
                         data.amountTobeAdded = data.allInAmount;
