@@ -60,7 +60,7 @@ var model = {
             password: md5(dealer.password)
         }).exec(function (err, data) {
             console.log("data", data);
-            if (err) {
+            if (err ||  _.isEmpty(data)) {
                 callback(err);
             } else {
                 if (!_.isEmpty(data)) {
@@ -79,11 +79,11 @@ var model = {
                             }, {
                                 youTubeUrl: dealer.youTubeUrl
                             }).exec(function(err, data){
-
+                                callback(err, {
+                                    accessToken: accessToken
+                                });
                             });
-                            callback(err, {
-                                accessToken: accessToken
-                            });
+                           
                         }
                     });
                 } else {

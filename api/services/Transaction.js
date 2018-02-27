@@ -120,7 +120,8 @@ var model = {
             }
 
             player = result.players[player];
-            player.buyInAmt -= amount;
+            //remove
+            player.buyInAmt -= parseInt(amount);
             result.user.balance -= amount;
             result.dealer.balance += amount;
             var transactionData = {
@@ -442,6 +443,7 @@ var model = {
         var rackAmt = (data.totalPotAmt * parseInt(data.rackRate)) / 100;
         data.totalAmount = data.totalAmount - rackAmt;
         transData.amount = data.totalAmount;
+
         console.log("total amount", transData.amount);
         console.log("rack amount", rackAmt);
         // var accessToken = data.accessToken;
@@ -479,7 +481,8 @@ var model = {
                             _id: data._id
                         }, {
                             $inc: {
-                                buyInAmt: data.totalAmount
+                                //remove
+                                buyInAmt: parseInt(data.totalAmount)
                             }
                         }).exec(callback)
                     },
@@ -532,7 +535,6 @@ var model = {
                     transaction: function (callback) {
                         transData.userId = userData._id;
                       
-                      
                         if (!transData._id) {
                             Transaction.saveData(transData, function (err, data) {
                                 callback(err, data);
@@ -562,7 +564,8 @@ var model = {
                             _id: data._id
                         }, {
                             $inc: {
-                                buyInAmt: decAmount,
+                                //remove
+                                buyInAmt: parseInt(decAmount)
                                 //totalAmount: 0
                             }
                         }).exec(callback);

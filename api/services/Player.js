@@ -2436,6 +2436,7 @@ var model = {
                         Transaction.tableLostAmount(Player, callback);
                     },
                     function (arg1, callback) {
+                        Table.blastSocket(tableId);
                         console.log("last callback");
                         Player.find({
                             isFold: false,

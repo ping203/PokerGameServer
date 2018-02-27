@@ -8,7 +8,8 @@ function callServe(cardName) {
     if (isCallApi) {
         global.isCallApi = false;
         Player.serve({
-            card: cardName
+            card: cardName,
+            tableId: "5a4dcf4307ab9d5320ce6d9d"
         }, function (err, data) {
             global.isCallApi = true;
             if (err) {
