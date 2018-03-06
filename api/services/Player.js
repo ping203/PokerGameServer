@@ -710,10 +710,12 @@ var model = {
                             } else {
                                 maxAmount = maxAmountObj.amount;
                             }
-                            allData.fromRaised = maxAmount + 100;
-                            if (maxAmount == 0) {
-                                allData.fromRaised = allData.table.bigBlind;
-                            }
+                            var raiseAmt = [];
+                            raiseAmt[0]= parseInt(maxAmount * 1.5);
+                            raiseAmt[1] = maxAmount + 200;
+                            
+                            allData.fromRaised = _.max(raiseAmt);
+                            
                             var amtToBePaid = allData.fromRaised - Pot.gePlayerAmount(allData.table, data.currentPlayer.playerNo);
                             // console.log("allData.fromRaised", allData.fromRaised);
 
