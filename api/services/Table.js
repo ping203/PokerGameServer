@@ -658,7 +658,7 @@ var model = {
                         _.each(w.winningCards, function (c) {
                             var card = {};
                             var cardNumber = 0;
-                            var cardNo = _.filter(allData.CommunityCards, function (cc) {
+                            var cardNoblastSocketWinner = _.filter(allData.CommunityCards, function (cc) {
                                 return cc.cardValue == c;
                             });
                             if (!_.isEmpty(cardNo)) {
@@ -975,6 +975,7 @@ var model = {
                     });
                     messages.push(pots);
                 });
+                console.log(_.reverse(messages));
                 callback(null, messages);
 
             }

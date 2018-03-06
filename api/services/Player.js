@@ -391,6 +391,14 @@ var model = {
                     tableLeft: false
                 }).lean().exec(callback);
             },
+            allPlayers:  function (callback) {
+                Player.find({
+                    table: data.tableId,
+                    isActive: true,
+                  //  isFold: false,
+                    tableLeft: false
+                }).lean().exec(callback);
+            },
             communityCards: function (callback) {
                 CommunityCards.find({
                     table: data.tableId,
@@ -646,6 +654,8 @@ var model = {
                         p.cards = [];
                         p.isFold = false;
                         p.isAllIn = false;
+                        p.isSmallBlind = false;
+                        p.isBigBlind = false;
                         //  p.isActive = false;
                     }
                     console.log("Pot.gePlayerAmount(allData.table, p.playerNo);", Pot.gePlayerAmount(allData.table, p.playerNo));

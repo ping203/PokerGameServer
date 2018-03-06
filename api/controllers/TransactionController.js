@@ -8,8 +8,8 @@ var controller = {
         console.log("inside withdrawCoins");
         Transaction.withdrawCoins(req.body, res.callback);
     },
-    getDetails: function (req, res) {
-        Transaction.getDetails(req.body, res.callback);
+    getPaymentDetails: function (req, res) {
+        Transaction.getPaymentDetails(req.body, res.callback);
     },
     generateRefundExcel: function (req, res) {
         Transaction.generateRefundExcel(req.body, res);
@@ -24,6 +24,9 @@ var controller = {
     makeTip: function (req, res) {
         console.log(req.body);
         Transaction.makeTip(req.body, res.callback);  
+    },
+    getTableStatusDetails: function(req, res){
+        Transaction.getTableStatusDetails(req.body, res.callback);  
     }
 };
 module.exports = _.assign(module.exports, controller);

@@ -87,7 +87,7 @@ var model = {
         });
     },
     declareWinner: function (allData, callback) {
-        var activePlayers = _.map(allData.players, 'user');
+        var activePlayers = _.map(allData.allPlayers, 'user');
         var winnerPots = [];
         _.each(allData.pots, function (p, key) {
             if (key == 0) {
@@ -179,7 +179,7 @@ var model = {
                         $push: {
                             history: {
                                 $each: [history],
-                                $sort: -1,
+                                $sort: {_id: -1},
                                 $slice: 5
                             }
                         }

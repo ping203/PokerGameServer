@@ -253,7 +253,7 @@ var model = {
             instance.save(callback)
         }
     },
-    getDetails: function (data, callback) {
+    getTableStatusDetails: function (data, callback) {
         var Model = this;
         var pagination = 20;
         var page = 0;
@@ -263,7 +263,8 @@ var model = {
         console.log(data);
         var skipRecords = page * pagination;
         User.findOne({
-            accessToken: data.accessToken
+            accessToken: data.accessToken,
+            
         }).exec(function (err, data) {
             if (err) {
                 callback(err);
@@ -278,7 +279,46 @@ var model = {
                     };
 
                     Model.find({
-                        userId: data._id
+                        userId: data._id,
+                        transType: {$in: ["tableLost", "tableWon"]}
+                    }).sort({
+                        _id: -1
+                    }).page(options, callback);
+
+                } else {
+                    callback("Please login first.");
+                }
+            }
+        });
+    },
+    getPaymentDetails: function (data, callback) {
+        var Model = this;
+        var pagination = 20;
+        var page = 0;
+        if (data.page) {
+            page = data.page
+        }
+        console.log(data);
+        var skipRecords = page * pagination;
+        User.findOne({
+            accessToken: data.accessToken,
+            
+        }).exec(function (err, data) {
+            if (err) {
+                callback(err);
+            } else {
+                if (!_.isEmpty(data)) {
+
+                    var options = {
+
+
+                        start: page * pagination,
+                        count: pagination
+                    };
+
+                    Model.find({
+                        userId: data._id,
+                        transType: {$in: ["diposit", "withdraw"]}
                     }).sort({
                         _id: -1
                     }).page(options, callback);
@@ -441,7 +481,7 @@ var model = {
         transData.transType = "tableWon";
 
         var rackAmt = (data.totalPotAmt * parseInt(data.rackRate)) / 100;
-        data.totalAmount = data.totalAmount - rackAmt;
+        data.totalAmount = _.ceil(data.totalAmount - rackAmt);
         transData.amount = data.totalAmount;
 
         console.log("total amount", transData.amount);
@@ -514,7 +554,7 @@ var model = {
         var transData = {};
         transData.transType = "tableLost";
         // var transAmt = data.amount;
-        transData.amount = data.totalAmount;
+        transData.amount = _.ceil(data.totalAmount);
         //var accessToken = data.accessToken;
         // if (parseInt(transAmt) == NaN) {
         //     callback("Enter Valid Amount");
