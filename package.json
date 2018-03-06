@@ -49,6 +49,7 @@
     "mongoose-url-slugs": "^1.0.0",
     "mongoose-validators": "^0.1.0",
     "monguurl": "^0.1.0",
+    "node-cron": "^1.2.1",
     "node-machine-id": "^1.1.9",
     "node-xlsx": "^0.11.0",
     "passport": "^0.4.0",
@@ -66,7 +67,8 @@
     "sails-wohlig-controller": "^0.0.4",
     "sails-wohlig-service": "^0.0.11",
     "sendgrid": "^5.2.3",
-    "serialport": "^6.0.3"
+    "serialport": "^6.0.3",
+    "voucher-code-generator": "^1.1.1"
   },
   "scripts": {
     "debug": "node debug app.js",
