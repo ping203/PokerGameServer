@@ -939,6 +939,8 @@ var model = {
                             if (smallBlindIndex == -1) {
                                 smallBlindIndex = 0;
                             }
+
+
                             // if (smallBlindIndex == -1) {
 
                             //      dealerData.smallBlindNo = smallBlindArr[0].playerNo;
@@ -959,6 +961,7 @@ var model = {
                             var bigBlindIndex = _.findIndex(bigBlindArr, function (p) {
                                 return p.playerNo > dealerData.smallBlindNo
                             });
+
                             // if (bigBlindIndex == -1) {
                             //     dealerData.bigBlindNo = bigBlindArr[0].playerNo;
                             //     // var bigBlind = _.minBy(bigBlindArr, 'playerNo');
@@ -1015,8 +1018,13 @@ var model = {
                                     if (p.buyInAmt == 0 && !p.autoRebuy || p.tableLeft) {
                                         isActive = false;
                                     }
+                                    if(data.isDealer){
+                                        isBigBlind = p.isBigBlind;
+                                        isSmallBlind = p.isSmallBlind;
+                                        isDealer = p.isDealer;
+                                    } 
 
-                                    if (p.payBigBlind && !p.isActive && !p.tableLeft && p.buyInAmt > 0) {
+                                    if (!data.isDealer && p.payBigBlind && !p.isActive && !p.tableLeft && p.buyInAmt > 0) {
                                         payBigBlind = true;
                                         isActive = true;
                                     }
@@ -2066,7 +2074,7 @@ var model = {
 
                                     player.save(function (err, data) {
                                         console.log("err...........", err, "data .........", data.playerNo);
-                                        CommunityCards.setTimeOut(tableId, data.playerNo);
+                                        CommunityCards.setTimeOut(tableId, player.playerNo);
                                         callback(err, data);
                                     });
                                 }

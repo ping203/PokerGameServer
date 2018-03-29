@@ -23,7 +23,7 @@ var model = {
                     table: tableId
                 }).lean().exec(function (err, data) {
                     gameObject.players = data;
-                   
+                    callback(err);
                 });
             },
             cards: function (callback) {
@@ -31,7 +31,7 @@ var model = {
                     table: tableId
                 }).lean().exec(function (err, data) {
                     gameObject.cards = data;
-                    
+                    callback(err);
                 });
             },
             pots: function(callback){
@@ -39,7 +39,7 @@ var model = {
                     table: tableId
                 }).lean().exec(function (err, data) {
                     gameObject.pots = data;
-                    
+                    callback(err);
                 });
             }
         }, function(err){

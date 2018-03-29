@@ -67,7 +67,6 @@
     "sails-wohlig-controller": "^0.0.4",
     "sails-wohlig-service": "^0.0.11",
     "sendgrid": "^5.2.3",
-    "serialport": "^6.0.3",
     "voucher-code-generator": "^1.1.1"
   },
   "scripts": {

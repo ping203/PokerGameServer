@@ -658,7 +658,7 @@ var model = {
                         _.each(w.winningCards, function (c) {
                             var card = {};
                             var cardNumber = 0;
-                            var cardNoblastSocketWinner = _.filter(allData.CommunityCards, function (cc) {
+                            var cardNo = _.filter(allData.CommunityCards, function (cc) {
                                 return cc.cardValue == c;
                             });
                             if (!_.isEmpty(cardNo)) {
@@ -692,7 +692,7 @@ var model = {
                     });
 
                     _.each(allData.admin, function (a) {
-                        sails.sockets.broadcast(a.socketId, "newGame", {
+                        sails.sockets.broadcast(a.socketId, "showWinner", {
                             data: allData
                         });
                     });
