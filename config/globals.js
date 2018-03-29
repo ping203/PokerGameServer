@@ -135,4 +135,4 @@ if (process.env.NODE_ENV && process.env.NODE_ENV === "production") {
 
 // libraries for serialport reading
 global.beep = require('beepbeep');
-global.SerialPort = require('serialport');
+//global.SerialPort = require('serialport');
